@@ -93,6 +93,8 @@ classDiagram
         +modifyOrder(orderId, qty) void
         +match() vector~Trade~
         +getOrderCount() size_t
+        +getBestBid() Price
+        +getBestAsk() Price
     }
     
     %% Relationships
@@ -138,7 +140,8 @@ Each order tracked by ID"
     note for MapOrderBook "Add: O(log n)
 Cancel: O(1) avg
 Match: O(m)
-Best price: O(1)"
+Best price: O(1) map.begin()
+getBestBid/Ask: O(1)"
 
     %% Styling
     classDef container fill:#e1f5ff,stroke:#0288d1,stroke-width:2px

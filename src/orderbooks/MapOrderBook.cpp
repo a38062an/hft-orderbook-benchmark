@@ -154,4 +154,22 @@ namespace hft
         return orderLookup_.size();
     }
 
+    Price MapOrderBook::getBestBid() const
+    {
+        if (bids_.empty())
+        {
+            return 0; // No bids in the book
+        }
+        return bids_.begin()->first; // First key is highest price (std::greater)
+    }
+
+    Price MapOrderBook::getBestAsk() const
+    {
+        if (asks_.empty())
+        {
+            return std::numeric_limits<Price>::max(); // No asks in the book
+        }
+        return asks_.begin()->first; // First key is lowest price (std::less)
+    }
+
 } // namespace hft
