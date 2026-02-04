@@ -1,0 +1,193 @@
+---
+title: ArrayOrderBook Data Structure Design
+---
+classDiagram
+    %% Core Types and Enums
+    class Side {
+        <<enumeration>>
+        Buy
+        Sell
+    }
+    
+    class OrderType {
+        <<enumeration>>
+        Limit
+        Market
+    }
+    
+    %% Basic Types (type aliases)
+    class Types {
+        <<typedefs>>
+        OrderId: uint64_t
+        Price: uint64_t
+        Quantity: uint64_t
+        Timestamp: uint64_t
+    }
+    
+    %% Order Structure
+    class Order {
+        +OrderId id
+        +Price price
+        +Quantity quantity
+        +Side side
+        +OrderType type
+        +Timestamp timestamp
+    }
+    
+    %% Trade Structure
+    class Trade {
+        +OrderId buyOrderId
+        +OrderId sellOrderId
+        +Price price
+        +Quantity quantity
+        +Timestamp timestamp
+    }
+    
+    %% Order Location for Fast Lookup (modified for array)
+    class OrderLocation {
+        +bool isBuy
+        +size_t arrayIndex
+        +OrderList::iterator iterator
+    }
+    
+    %% Container Types
+    class OrderList {
+        <<std::list~Order~>>
+        +push_back(order)
+        +pop_front()
+        +erase(iterator)
+        +front() Order
+        +empty() bool
+    }
+    
+    class BidLevelsArray {
+        <<std::array~OrderList, NUM_LEVELS~>>
+        +operator[](index) OrderList
+        +size() size_t
+    }
+    
+    class AskLevelsArray {
+        <<std::array~OrderList, NUM_LEVELS~>>
+        +operator[](index) OrderList
+        +size() size_t
+    }
+    
+    class ActiveLevelsBitset {
+        <<std::bitset~NUM_LEVELS~>>
+        +set(index)
+        +reset(index)
+        +test(index) bool
+    }
+    
+    class OrderLookup {
+        <<std::unordered_map~OrderId, OrderLocation~>>
+        +operator[](orderId) OrderLocation
+        +find(orderId) iterator
+        +erase(orderId)
+    }
+    
+    %% Main Class
+    class ArrayOrderBook {
+        -BidLevelsArray bidLevels_
+        -AskLevelsArray askLevels_
+        -ActiveLevelsBitset activeBidLevels_
+        -ActiveLevelsBitset activeAskLevels_
+        -OrderLookup orderLookup_
+        -Price minPrice_
+        -Price maxPrice_
+        -Price tickSize_
+        -Price cachedBestBid_
+        -Price cachedBestAsk_
+        +addOrder(order) void
+        +cancelOrder(orderId) void
+        +modifyOrder(orderId, qty) void
+        +match() vector~Trade~
+        +getBestBid() Price
+        +getBestAsk() Price
+        +getOrderCount() size_t
+        -priceToIndex(price) size_t
+        -indexToPrice(index) Price
+        -isValidPrice(price) bool
+        -updateBestBidCache() void
+        -updateBestAskCache() void
+    }
+    
+    %% Relationships
+    Order --> Side : has
+    Order --> OrderType : has
+    Order --> Types : uses types
+    Trade --> Types : uses types
+    
+    OrderList "1" *-- "*" Order : contains FIFO
+    
+    BidLevelsArray "1" *-- "*" OrderList : Index to List
+    AskLevelsArray "1" *-- "*" OrderList : Index to List
+    
+    OrderLocation --> OrderList : points into
+    OrderLookup "1" *-- "*" OrderLocation : OrderId to Location
+    
+    ArrayOrderBook "1" *-- "1" BidLevelsArray : owns
+    ArrayOrderBook "1" *-- "1" AskLevelsArray : owns
+    ArrayOrderBook "1" *-- "1" ActiveLevelsBitset : tracks bids
+    ArrayOrderBook "1" *-- "1" ActiveLevelsBitset : tracks asks
+    ArrayOrderBook "1" *-- "1" OrderLookup : owns
+    ArrayOrderBook ..> Trade : creates
+    ArrayOrderBook ..> Order : processes
+    
+    %% Notes on Design Decisions
+    note for BidLevelsArray "std::array fixed-size
+Direct O(1) index access
+Pre-allocated memory"
+    
+    note for AskLevelsArray "std::array fixed-size
+Direct O(1) index access
+Pre-allocated memory"
+    
+    note for ActiveLevelsBitset "Tracks active price levels
+Fast scan for best bid/ask
+Memory efficient bitmap"
+    
+    note for OrderList "std::list doubly-linked
+FIFO at each price level
+O(1) push/pop/erase"
+    
+    note for OrderLookup "std::unordered_map
+O(1) lookup by OrderId
+Enables fast cancel/modify"
+    
+    note for Order "Price must be in range
+[minPrice, maxPrice]
+Aligned to tickSize"
+    
+    note for ArrayOrderBook "Add: O(1) direct index
+Cancel: O(1) avg
+Match: O(m)
+Best price: O(1) cached!
+Cache invalidation: O(k) only when
+best level emptied
+Range: [MIN_PRICE, MAX_PRICE]"
+    
+    note for ActiveLevelsBitset "Cache Optimization:
+cachedBestBid/Ask store
+top-of-book prices
+Updated on add: O(1)
+Recomputed on best level
+empty: O(k) bitmap scan"
+
+    %% Styling
+    classDef container fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
+    classDef struct fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef enum fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef core fill:#e8f5e9,stroke:#388e3c,stroke-width:3px
+    
+    class OrderList container
+    class BidLevelsArray container
+    class AskLevelsArray container
+    class ActiveLevelsBitset container
+    class OrderLookup container
+    class Order struct
+    class Trade struct
+    class OrderLocation struct
+    class Side enum
+    class OrderType enum
+    class ArrayOrderBook core

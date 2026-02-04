@@ -1,5 +1,6 @@
 #include "core/MatchingEngine.hpp"
 #include "network/TCPOrderGateway.hpp"
+#include "orderbooks/MapOrderBook.hpp"
 #include "utils/LockFreeQueue.hpp"
 #include <iostream>
 #include <atomic>
@@ -16,7 +17,10 @@ void signalHandler(int signum)
     isApplicationRunning.store(false, std::memory_order_relaxed);
 }
 
-int main() 
+/**
+ * Currently tests map order book
+ */
+int main()
 {
     // Register signal handler for graceful shutdown
     signal(SIGINT, signalHandler);
@@ -27,23 +31,26 @@ int main()
     // Capacity must be power of 2
     LockFreeQueue<Order, 1024> orderQueue;
 
-    // 2. Initialize Components
+    // 2. Initialize Order Book
+    MapOrderBook orderBook;
+
+    // 3. Initialize Components
     // Gateway produces to queue
     TCPOrderGateway gateway(12345, orderQueue);
-    
-    // Engine consumes from queue
-    MatchingEngine engine(orderQueue);
 
-    // 3. Start Network Thread
+    // Engine consumes from queue and processes via order book
+    MatchingEngine engine(orderQueue, orderBook);
+
+    // 4. Start Network Thread
     std::cout << "Starting TCP Gateway on port 12345..." << std::endl;
     gateway.start();
 
-    // 4. Run Matching Engine (Worker Thread)
+    // 5. Run Matching Engine (Worker Thread)
     // In a real HFT setup, we would pin this thread to a specific core here.
     std::cout << "Starting Matching Engine Loop..." << std::endl;
     engine.run(isApplicationRunning);
 
-    // 5. Shutdown
+    // 6. Shutdown
     std::cout << "Stopping Gateway..." << std::endl;
     gateway.stop();
 

@@ -1,0 +1,158 @@
+---
+title: MapOrderBook Data Structure Design
+---
+classDiagram
+    %% Core Types and Enums
+    class Side {
+        <<enumeration>>
+        Buy
+        Sell
+    }
+    
+    class OrderType {
+        <<enumeration>>
+        Limit
+        Market
+    }
+    
+    %% Basic Types (type aliases)
+    class Types {
+        <<typedefs>>
+        OrderId: uint64_t
+        Price: uint64_t
+        Quantity: uint64_t
+        Timestamp: uint64_t
+    }
+    
+    %% Order Structure
+    class Order {
+        +OrderId id
+        +Price price
+        +Quantity quantity
+        +Side side
+        +OrderType type
+        +Timestamp timestamp
+    }
+    
+    %% Trade Structure
+    class Trade {
+        +OrderId buyOrderId
+        +OrderId sellOrderId
+        +Price price
+        +Quantity quantity
+        +Timestamp timestamp
+    }
+    
+    %% Order Location for Fast Lookup
+    class OrderLocation {
+        +bool isBuy
+        +Price price
+        +OrderList::iterator iterator
+    }
+    
+    %% STL Container Types
+    class OrderList {
+        <<std::list~Order~>>
+        +push_back(order)
+        +pop_front()
+        +erase(iterator)
+        +front() Order
+        +empty() bool
+    }
+    
+    class BidsMap {
+        <<std::map~Price, OrderList, greater~Price~~~>>
+        +operator[](price) OrderList
+        +begin() iterator
+        +erase(price)
+        +empty() bool
+    }
+    
+    class AsksMap {
+        <<std::map~Price, OrderList, less~Price~~~>>
+        +operator[](price) OrderList
+        +begin() iterator
+        +erase(price)
+        +empty() bool
+    }
+    
+    class OrderLookup {
+        <<std::unordered_map~OrderId, OrderLocation~>>
+        +operator[](orderId) OrderLocation
+        +find(orderId) iterator
+        +erase(orderId)
+    }
+    
+    %% Main Class
+    class MapOrderBook {
+        -BidsMap bids_
+        -AsksMap asks_
+        -OrderLookup orderLookup_
+        +addOrder(order) void
+        +cancelOrder(orderId) void
+        +modifyOrder(orderId, qty) void
+        +match() vector~Trade~
+        +getOrderCount() size_t
+    }
+    
+    %% Relationships
+    Order --> Side : has
+    Order --> OrderType : has
+    Order --> Types : uses types
+    Trade --> Types : uses types
+    
+    OrderList "1" *-- "*" Order : contains FIFO
+    
+    BidsMap "1" *-- "*" OrderList : Price to List
+    AsksMap "1" *-- "*" OrderList : Price to List
+    
+    OrderLocation --> OrderList : points into
+    OrderLookup "1" *-- "*" OrderLocation : OrderId to Location
+    
+    MapOrderBook "1" *-- "1" BidsMap : owns
+    MapOrderBook "1" *-- "1" AsksMap : owns
+    MapOrderBook "1" *-- "1" OrderLookup : owns
+    MapOrderBook ..> Trade : creates
+    MapOrderBook ..> Order : processes
+    
+    %% Notes on Design Decisions
+    note for BidsMap "std::map greater
+Highest bid first
+O(log n) insert/delete"
+    
+    note for AsksMap "std::map less
+Lowest ask first
+O(log n) insert/delete"
+    
+    note for OrderList "std::list doubly-linked
+FIFO at each price
+O(1) push/pop/erase"
+    
+    note for OrderLookup "std::unordered_map
+O(1) lookup by OrderId
+Enables fast cancel/modify"
+    
+    note for Order "Price-time priority
+Each order tracked by ID"
+    
+    note for MapOrderBook "Add: O(log n)
+Cancel: O(1) avg
+Match: O(m)
+Best price: O(1)"
+
+    %% Styling
+    classDef container fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
+    classDef struct fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef enum fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef core fill:#e8f5e9,stroke:#388e3c,stroke-width:3px
+    
+    class OrderList container
+    class BidsMap container
+    class AsksMap container
+    class OrderLookup container
+    class Order struct
+    class Trade struct
+    class OrderLocation struct
+    class Side enum
+    class OrderType enum
+    class MapOrderBook core
