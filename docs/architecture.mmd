@@ -1,0 +1,90 @@
+%% HFT Order Book Architecture - Mermaid Component Diagram
+%% View in VS Code with Mermaid Preview extension
+
+%%{init: {'theme':'base', 'themeVariables': {'fontSize':'14px'}}}%%
+
+graph TB
+    subgraph Legend
+        L1[Solid = Implemented]
+        L2[Dashed = Planned]
+    end
+
+    subgraph TestHarness["Test Harness"]
+        Client["tcp_order_sender<br/><<executable>><br/>---<br/>serverPort: 12345<br/>orderCount: 1M<br/>---<br/>create_fix_message()<br/>sendOrders()<br/>---<br/>Tech: TCP/IP Networking<br/>Random order generator"]
+    end
+
+    subgraph NetworkLayer["Network Layer"]
+        Gateway["TCPOrderGateway<br/><<service>><br/>---<br/>serverSocket: int<br/>port: 12345<br/>running: atomic bool<br/>---<br/>start(), stop()<br/>acceptLoop()<br/>clientHandler()<br/>---<br/>Tech: TCP Server<br/>std::jthread<br/>Multi-threaded"]
+        
+        Parser["FIXParser<br/><<utility>><br/>---<br/>parse() static<br/>getTagValue() static<br/>---<br/>Tech: FIX 4.2"]
+    end
+
+    subgraph Queues["Lock-Free Queues"]
+        InputQ["InputQueue<br/><<SPSC>><br/>---<br/>writeIndex: atomic<br/>readIndex: atomic<br/>buffer[1024]<br/>---<br/>push(): bool<br/>pop(): bool<br/>---<br/>Tech: Lock-free<br/>Ring buffer<br/>Cache-aligned"]
+        
+        TradeQ["TradeQueue<br/><<SPMC>><br/>---<br/>Planned<br/>Trade distribution"]
+    end
+
+    subgraph EngineCore["Matching Engine Core"]
+        Engine["MatchingEngine<br/><<service>><br/>---<br/>inputQueue: ref<br/>orderBook: MapOrderBook<br/>metrics: MetricsCollector<br/>---<br/>run()<br/>processOrder()<br/>---<br/>Tech: Single-threaded<br/>Busy-wait loop<br/>rdtsc() timing<br/>Thread: P-Core 0"]
+        
+        Metrics["MetricsCollector<br/><<instrumentation>><br/>---<br/>orderCount: atomic<br/>tradeCount: atomic<br/>latencies: vector<br/>---<br/>recordLatency()<br/>incrementOrders()<br/>---<br/>Tech: Lock-free<br/>sub-10ns overhead"]
+    end
+
+    subgraph OrderBookLayer["Order Book Interface & Implementations"]
+        IBook["<<interface>><br/>IOrderBook<br/>---<br/>addOrder()<br/>cancelOrder()<br/>modifyOrder()<br/>match()<br/>getOrderCount()"]
+        
+        MapBook["MapOrderBook<br/><<concrete>><br/>---<br/>bids: map<br/>asks: map<br/>orderLookup: unordered_map<br/>---<br/>Tech: std::map<br/>O(log n)<br/>Price-time priority"]
+        
+        SkipBook["SkipListOrderBook<br/><<concrete>><br/>---<br/>Planned<br/>Better cache locality"]
+        
+        ArrayBook["ArrayOrderBook<br/><<concrete>><br/>---<br/>Planned<br/>O(1) access<br/>Best cache"]
+    end
+
+    subgraph SyncWrappers["Synchronization Strategies"]
+        CoarseLock["CoarseLockOrderBook<br/><<wrapper>><br/>---<br/>innerBook: IOrderBook&<br/>mutex: std::mutex<br/>---<br/>Wraps IOrderBook<br/>Simple serialization"]
+        
+        RCU["RCUOrderBook<br/><<wrapper>><br/>---<br/>innerBook: atomic ptr<br/>oldVersions: vector<br/>---<br/>Copy-on-write<br/>Readers never block<br/>2x memory"]
+    end
+
+    subgraph Readers["Reader Threads"]
+        MarketData["MarketDataPublisher<br/><<reader>><br/>---<br/>updateFreq: 10K/sec<br/>---<br/>publishSnapshot()<br/>getBestBidAsk()<br/>---<br/>Tech: UDP multicast<br/>Thread: P-Core 4<br/>Latency: sub-10μs"]
+        
+        GUI["GUIUpdater<br/><<reader>><br/>---<br/>refreshRate: 10/sec<br/>---<br/>getSnapshot()<br/>updateDisplay()<br/>---<br/>Tech: Qt6<br/>Thread: E-Core 10<br/>Latency: sub-1ms"]
+    end
+
+    subgraph Persistence["Persistence Layer"]
+        PersistWorker["PersistenceWorker<br/><<background>><br/>---<br/>Planned<br/>PostgreSQL + CSV<br/>Threads: E-Cores 8-9<br/>Blocking I/O"]
+    end
+
+    %% Critical Path Connections (Solid)
+    Client -->|"FIX messages<br/>TCP"| Gateway
+    Gateway -.->|uses| Parser
+    Gateway -->|"push(order)"| InputQ
+    InputQ -->|"pop(order)"| Engine
+    Engine -->|updates| Metrics
+    Engine -.->|uses| IBook
+    Engine -.->|"enqueue(trade)<br/>PLANNED"| TradeQ
+
+    %% Implementation relationships
+    IBook -.->|implements| MapBook
+    IBook -.->|implements| SkipBook
+    IBook -.->|implements| ArrayBook
+
+    %% Wrapper relationships
+    CoarseLock -.->|wraps| IBook
+    RCU -.->|wraps| IBook
+
+    %% Planned connections (Dashed)
+    TradeQ -.->|"dequeue<br/>PLANNED"| PersistWorker
+    TradeQ -.->|"dequeue<br/>PLANNED"| MarketData
+    
+    MarketData -.->|"getBestBid/Ask()<br/>needs sync wrapper"| IBook
+    GUI -.->|"getSnapshot()<br/>needs sync wrapper"| IBook
+
+    %% Styling
+    classDef implemented fill:#90EE90,stroke:#228B22,stroke-width:2px,padding:20px
+    classDef planned fill:#FFB6C1,stroke:#DC143C,stroke-width:2px,stroke-dasharray: 5 5,padding:20px
+    
+    class Client,Gateway,Parser,InputQ,Engine,Metrics,IBook,MapBook implemented
+    class TradeQ,SkipBook,ArrayBook,CoarseLock,RCU,MarketData,GUI,PersistWorker planned

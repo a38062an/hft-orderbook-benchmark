@@ -6,6 +6,13 @@
 #include <iostream>
 #include <vector>
 
+/**
+ *
+ * Each client sends there order through TCP and get there own buffer and therad from the exchange
+ * The buffer is large and track incremently by seeing what has been processed
+ *
+ */
+
 namespace hft
 {
 
@@ -63,7 +70,7 @@ namespace hft
             close(serverSocket_);
             serverSocket_ = -1;
         }
-        // Although using J:thread still have to call .join()
+        // Although using J:thread auto joins we call .join() for dterministic shutdown ordering
         if (acceptConnectionThread_.joinable())
         {
             acceptConnectionThread_.join();
@@ -83,7 +90,7 @@ namespace hft
         {
             // Block waiting for incoming client connections
             int clientSocket = accept(serverSocket_, nullptr, nullptr);
-            if (clientSocket < 0)
+            if (clientSocket < 0) // Error occured if less than 0
             {
                 if (running_)
                 {
