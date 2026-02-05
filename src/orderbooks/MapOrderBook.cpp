@@ -65,6 +65,13 @@ namespace hft
             return;
         }
 
+        // If modifying to zero quantity, cancel instead
+        if (newQuantity == 0)
+        {
+            cancelOrder(orderId);
+            return;
+        }
+
         // In a real book, increasing size might lose priority.
         // For simplicity here, we just update the quantity in place.
         orderIterator->second.iterator->quantity = newQuantity;
@@ -75,7 +82,7 @@ namespace hft
     std::vector<Trade> MapOrderBook::match()
     {
         std::vector<Trade> trades;
-        static uint64_t matchCounter = 0;
+        static uint64_t matchCounter{0};
 
         // Continue matching while there are overlapping prices
         while (!bids_.empty() && !asks_.empty())
@@ -101,13 +108,10 @@ namespace hft
 
                 Quantity tradeQty = std::min(bidOrder.quantity, askOrder.quantity);
 
-                trades.push_back({
-                    bidOrder.id,
-                    askOrder.id,
-                    bestAskIterator->first,
-                    tradeQty,
-                    0 // Timestamp
-                });
+                trades.push_back({bidOrder.id,
+                                  askOrder.id,
+                                  askOrder.price,
+                                  tradeQty});
 
                 matchCounter++;
                 if (matchCounter % 1000 == 0)
@@ -149,6 +153,7 @@ namespace hft
         return trades;
     }
 
+    // Public APIS for future GUI
     std::size_t MapOrderBook::getOrderCount() const
     {
         return orderLookup_.size();
