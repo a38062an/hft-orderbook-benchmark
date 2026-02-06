@@ -1,0 +1,175 @@
+---
+title: VectorOrderBook Data Structure Design
+---
+classDiagram
+    %% Core Types and Enums
+    class Side {
+        <<enumeration>>
+        Buy
+        Sell
+    }
+    
+    class OrderType {
+        <<enumeration>>
+        Limit
+        Market
+    }
+    
+    %% Basic Types (type aliases)
+    class Types {
+        <<typedefs>>
+        OrderId: uint64_t
+        Price: uint64_t
+        Quantity: uint64_t
+        Timestamp: uint64_t
+    }
+    
+    %% Order Structure
+    class Order {
+        +OrderId id
+        +Price price
+        +Quantity quantity
+        +Side side
+        +OrderType type
+        +Timestamp timestamp
+    }
+    
+    %% Trade Structure
+    class Trade {
+        +OrderId buyOrderId
+        +OrderId sellOrderId
+        +Price price
+        +Quantity quantity
+        +Timestamp timestamp
+    }
+    
+    %% Container Types
+    class OrderList {
+        <<std list Order>>
+        +push_back(order)
+        +pop_front()
+        +erase(iterator)
+        +front() Order
+        +empty() bool
+    }
+    
+    class BidsVector {
+        <<std vector pair Price OrderList>>
+        +front() pair
+        +back() pair
+        +insert(pos, value)
+        +erase(pos)
+        +empty() bool
+        +size() size_t
+        ---
+        Sorted descending
+        Binary search lookup
+    }
+    
+    class AsksVector {
+        <<std vector pair Price OrderList>>
+        +front() pair
+        +back() pair
+        +insert(pos, value)
+        +erase(pos)
+        +empty() bool
+        +size() size_t
+        ---
+        Sorted ascending
+        Binary search lookup
+    }
+    
+    class OrderLookup {
+        <<std unordered_map OrderId OrderLocation>>
+        +find(orderId) iterator
+        +erase(orderId)
+    }
+    
+    class OrderLocation {
+        +bool isBuy
+        +size_t vectorIndex
+        +list iterator
+    }
+    
+    %% Main Class
+    class VectorOrderBook {
+        -BidsVector bids_
+        -AsksVector asks_
+        -OrderLookup orderLookup_
+        +addOrder(order) void
+        +cancelOrder(orderId) void
+        +modifyOrder(orderId, qty) void
+        +match() vector Trade
+        +getOrderCount() size_t
+        +getBestBid() Price
+        +getBestAsk() Price
+    }
+    
+    %% Relationships
+    Order --> Side : has
+    Order --> OrderType : has
+    Order --> Types : uses types
+    Trade --> Types : uses types
+    
+    OrderList "1" *-- "*" Order : contains FIFO
+    
+    BidsVector "1" *-- "*" OrderList : Price to List
+    AsksVector "1" *-- "*" OrderList : Price to List
+    
+    OrderLocation --> OrderList : points into
+    OrderLookup "1" *-- "*" OrderLocation : OrderId to Location
+    
+    VectorOrderBook "1" *-- "1" BidsVector : owns
+    VectorOrderBook "1" *-- "1" AsksVector : owns
+    VectorOrderBook "1" *-- "1" OrderLookup : owns
+    VectorOrderBook ..> Trade : creates
+    VectorOrderBook ..> Order : processes
+    
+    note for BidsVector "std::vector of pairs
+Sorted descending
+Binary search O(log k)
+Cache-friendly contiguous"
+    
+    note for AsksVector "std::vector of pairs
+Sorted ascending
+Binary search O(log k)
+Cache-friendly contiguous"
+    
+    note for OrderList "std::list doubly-linked
+FIFO at each price
+O(1) push/pop/erase"
+    
+    note for OrderLookup "std::unordered_map
+O(1) lookup by OrderId
+Stores vectorIndex
+Fast cancel/modify"
+    
+    note for Order "Price-time priority
+Each order tracked by ID"
+    
+    note for VectorOrderBook "Add: O(log k) binary search
+Cancel: O(1) lookup
+Match: O(m)
+Best price: O(1) front()
+Dense cache-optimized"
+
+%% Styling
+classDef core fill:#90EE90,stroke:#228B22,stroke-width:3px
+classDef container fill:#87CEEB,stroke:#4682B4,stroke-width:2px
+classDef lookup fill:#E1F5FF,stroke:#0288D1,stroke-width:2px
+classDef struct fill:#FFE4B5,stroke:#DAA520,stroke-width:2px
+classDef basicStruct fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+classDef enum fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px
+classDef typedef fill:#FFFDE7,stroke:#F9A825,stroke-width:1px
+
+class VectorOrderBook core
+class BidsVector container
+class AsksVector container
+class OrderList container
+class OrderLookup lookup
+class OrderLocation struct
+class Order basicStruct
+class Trade basicStruct
+class Side enum
+class OrderType enum
+class Types typedef

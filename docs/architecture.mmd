@@ -36,9 +36,11 @@ graph TB
         
         MapBook["MapOrderBook<br/><<concrete>><br/>---<br/>bids: map<br/>asks: map<br/>orderLookup: unordered_map<br/>---<br/>Tech: std::map<br/>O(log n)<br/>Price-time priority"]
         
-        SkipBook["SkipListOrderBook<br/><<concrete>><br/>---<br/>Planned<br/>Better cache locality"]
+        VectorBook["VectorOrderBook<br/><<concrete>><br/>---<br/>bids: vector<br/>asks: vector<br/>orderLookup: unordered_map<br/>---<br/>Tech: std::vector<br/>O(log k) binary search<br/>Cache-friendly"]
         
-        ArrayBook["ArrayOrderBook<br/><<concrete>><br/>---<br/>Planned<br/>O(1) access<br/>Best cache"]
+        ArrayBook["ArrayOrderBook<br/><<concrete>><br/>---<br/>bids: array<br/>asks: array<br/>bitmap: bitset<br/>---<br/>Tech: std::array<br/>O(1) access<br/>Best cache"]
+        
+        HybridBook["HybridOrderBook<br/><<concrete>><br/>---<br/>hotBids: vector<br/>coldBids: map<br/>hotAsks: vector<br/>coldAsks: map<br/>---<br/>Tech: Hybrid<br/>Hot vector + Cold map<br/>Proximity-based"]
     end
 
     subgraph SyncWrappers["Synchronization Strategies"]
@@ -68,8 +70,9 @@ graph TB
 
     %% Implementation relationships
     IBook -.->|implements| MapBook
-    IBook -.->|implements| SkipBook
+    IBook -.->|implements| VectorBook
     IBook -.->|implements| ArrayBook
+    IBook -.->|implements| HybridBook
 
     %% Wrapper relationships
     CoarseLock -.->|wraps| IBook
@@ -86,5 +89,5 @@ graph TB
     classDef implemented fill:#90EE90,stroke:#228B22,stroke-width:2px,padding:20px
     classDef planned fill:#FFB6C1,stroke:#DC143C,stroke-width:2px,stroke-dasharray: 5 5,padding:20px
     
-    class Client,Gateway,Parser,InputQ,Engine,Metrics,IBook,MapBook implemented
-    class TradeQ,SkipBook,ArrayBook,CoarseLock,RCU,MarketData,GUI,PersistWorker planned
+    class Client,Gateway,Parser,InputQ,Engine,Metrics,IBook,MapBook,VectorBook,ArrayBook,HybridBook implemented
+    class TradeQ,CoarseLock,RCU,MarketData,GUI,PersistWorker planned

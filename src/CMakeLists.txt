@@ -11,6 +11,12 @@ add_library(hft_core
     core/MetricsCollector.hpp
     orderbooks/MapOrderBook.cpp
     orderbooks/MapOrderBook.hpp
+    orderbooks/VectorOrderBook.cpp
+    orderbooks/VectorOrderBook.hpp
+    orderbooks/ArrayOrderBook.cpp
+    orderbooks/ArrayOrderBook.hpp
+    orderbooks/HybridOrderBook.cpp
+    orderbooks/HybridOrderBook.hpp
     network/TCPOrderGateway.cpp
     network/TCPOrderGateway.hpp
     network/FIXParser.cpp
