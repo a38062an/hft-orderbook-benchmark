@@ -1,11 +1,11 @@
-#include "HybridOrderBook.hpp"
+#include "hybrid_order_book.hpp"
 #include <iostream>
 #include <algorithm>
 
 namespace hft
 {
 
-    HybridOrderBook::HybridOrderBook(std::size_t maxHotLevels)
+    HybridOrderBook::HybridOrderBook(Index maxHotLevels)
         : maxHotLevels_(maxHotLevels)
     {
     }
@@ -26,7 +26,7 @@ namespace hft
             {
                 // Price level exists in hot, add there
                 hotIt->second.push_back(order);
-                orderLookup_[order.id] = {true, true, {static_cast<std::size_t>(hotIt - hotBids_.begin())}, --hotIt->second.end()};
+                orderLookup_[order.id] = {true, true, order.price, --hotIt->second.end()};
             }
             else
             {
@@ -39,7 +39,7 @@ namespace hft
                     OrderLocation loc;
                     loc.isBuy = true;
                     loc.isHot = false;
-                    loc.mapPrice = order.price;
+                    loc.price = order.price;
                     loc.iterator = --coldIt->second.end();
                     orderLookup_[order.id] = loc;
                 }
@@ -75,7 +75,7 @@ namespace hft
             {
                 // Price level exists in hot, add there
                 hotIt->second.push_back(order);
-                orderLookup_[order.id] = {false, true, {static_cast<std::size_t>(hotIt - hotAsks_.begin())}, --hotIt->second.end()};
+                orderLookup_[order.id] = {false, true, order.price, --hotIt->second.end()};
             }
             else
             {
@@ -88,7 +88,7 @@ namespace hft
                     OrderLocation loc;
                     loc.isBuy = false;
                     loc.isHot = false;
-                    loc.mapPrice = order.price;
+                    loc.price = order.price;
                     loc.iterator = --coldIt->second.end();
                     orderLookup_[order.id] = loc;
                 }
@@ -131,39 +131,41 @@ namespace hft
             // Order in hot path
             if (loc.isBuy)
             {
-                auto &orderList = hotBids_[loc.vectorIndex].second;
-                orderList.erase(loc.iterator);
+                // Find price level via binary search (O(log K))
+                auto levelIt = std::lower_bound(
+                    hotBids_.begin(), hotBids_.end(), loc.price,
+                    [](const auto &priceLevel, Price price)
+                    { return priceLevel.first > price; });
 
-                // Clean up empty price levels
-                if (orderList.empty())
+                if (levelIt != hotBids_.end() && levelIt->first == loc.price)
                 {
-                    hotBids_.erase(hotBids_.begin() + loc.vectorIndex);
+                    auto &orderList = levelIt->second;
+                    orderList.erase(loc.iterator);
 
-                    // Update indices for remaining orders
-                    for (auto &pair : orderLookup_)
+                    // Clean up empty price levels (O(K))
+                    if (orderList.empty())
                     {
-                        if (pair.second.isHot && pair.second.isBuy && pair.second.vectorIndex > loc.vectorIndex)
-                        {
-                            pair.second.vectorIndex--;
-                        }
+                        hotBids_.erase(levelIt);
+                        // No index updates needed! :)
                     }
                 }
             }
             else
             {
-                auto &orderList = hotAsks_[loc.vectorIndex].second;
-                orderList.erase(loc.iterator);
+                auto levelIt = std::lower_bound(
+                    hotAsks_.begin(), hotAsks_.end(), loc.price,
+                    [](const auto &priceLevel, Price price)
+                    { return priceLevel.first < price; });
 
-                if (orderList.empty())
+                if (levelIt != hotAsks_.end() && levelIt->first == loc.price)
                 {
-                    hotAsks_.erase(hotAsks_.begin() + loc.vectorIndex);
+                    auto &orderList = levelIt->second;
+                    orderList.erase(loc.iterator);
 
-                    for (auto &pair : orderLookup_)
+                    if (orderList.empty())
                     {
-                        if (pair.second.isHot && !pair.second.isBuy && pair.second.vectorIndex > loc.vectorIndex)
-                        {
-                            pair.second.vectorIndex--;
-                        }
+                        hotAsks_.erase(levelIt);
+                        // No index updates needed! :)
                     }
                 }
             }
@@ -173,7 +175,7 @@ namespace hft
             // Order in cold storage
             if (loc.isBuy)
             {
-                auto mapIt = coldBids_.find(loc.mapPrice);
+                auto mapIt = coldBids_.find(loc.price);
                 if (mapIt != coldBids_.end())
                 {
                     mapIt->second.erase(loc.iterator);
@@ -185,7 +187,7 @@ namespace hft
             }
             else
             {
-                auto mapIt = coldAsks_.find(loc.mapPrice);
+                auto mapIt = coldAsks_.find(loc.price);
                 if (mapIt != coldAsks_.end())
                 {
                     mapIt->second.erase(loc.iterator);
@@ -320,27 +322,13 @@ namespace hft
             if (bidOrderList.empty())
             {
                 hotBids_.erase(hotBids_.begin());
-
-                for (auto &pair : orderLookup_)
-                {
-                    if (pair.second.isHot && pair.second.isBuy && pair.second.vectorIndex > 0)
-                    {
-                        pair.second.vectorIndex--;
-                    }
-                }
+                // No index updates needed
             }
 
             if (askOrderList.empty())
             {
                 hotAsks_.erase(hotAsks_.begin());
-
-                for (auto &pair : orderLookup_)
-                {
-                    if (pair.second.isHot && !pair.second.isBuy && pair.second.vectorIndex > 0)
-                    {
-                        pair.second.vectorIndex--;
-                    }
-                }
+                // No index updates needed
             }
         }
 
@@ -411,7 +399,6 @@ namespace hft
 
             // Insert into hot
             auto insertIt = hotBids_.insert(hotIt, {price, std::move(coldIt->second)});
-            std::size_t newIndex = insertIt - hotBids_.begin();
 
             // Update all orders at this price level in lookup
             for (auto &order : insertIt->second)
@@ -420,16 +407,7 @@ namespace hft
                 if (lookupIt != orderLookup_.end())
                 {
                     lookupIt->second.isHot = true;
-                    lookupIt->second.vectorIndex = newIndex;
-                }
-            }
-
-            // Update indices for orders after insertion point
-            for (auto &pair : orderLookup_)
-            {
-                if (pair.second.isHot && pair.second.isBuy && pair.second.vectorIndex >= newIndex && orderLookup_.find(pair.first)->second.vectorIndex != newIndex)
-                {
-                    pair.second.vectorIndex++;
+                    lookupIt->second.price = price; // Ensure price is set
                 }
             }
 
@@ -457,7 +435,6 @@ namespace hft
 
             // Insert into hot
             auto insertIt = hotAsks_.insert(hotIt, {price, std::move(coldIt->second)});
-            std::size_t newIndex = insertIt - hotAsks_.begin();
 
             // Update all orders at this price level in lookup
             for (auto &order : insertIt->second)
@@ -466,16 +443,7 @@ namespace hft
                 if (lookupIt != orderLookup_.end())
                 {
                     lookupIt->second.isHot = true;
-                    lookupIt->second.vectorIndex = newIndex;
-                }
-            }
-
-            // Update indices for orders after insertion point
-            for (auto &pair : orderLookup_)
-            {
-                if (pair.second.isHot && !pair.second.isBuy && pair.second.vectorIndex >= newIndex && orderLookup_.find(pair.first)->second.vectorIndex != newIndex)
-                {
-                    pair.second.vectorIndex++;
+                    lookupIt->second.price = price; // Ensure price is set
                 }
             }
 
@@ -506,7 +474,7 @@ namespace hft
                 if (lookupIt != orderLookup_.end())
                 {
                     lookupIt->second.isHot = false;
-                    lookupIt->second.mapPrice = worstPrice;
+                    lookupIt->second.price = worstPrice;
                 }
             }
 
@@ -532,7 +500,7 @@ namespace hft
                 if (lookupIt != orderLookup_.end())
                 {
                     lookupIt->second.isHot = false;
-                    lookupIt->second.mapPrice = worstPrice;
+                    lookupIt->second.price = worstPrice;
                 }
             }
 
@@ -553,23 +521,13 @@ namespace hft
             if (it != hotBids_.end() && it->first == order.price)
             {
                 it->second.push_back(order);
-                orderLookup_[order.id] = {true, true, {static_cast<std::size_t>(it - hotBids_.begin())}, --it->second.end()};
+                orderLookup_[order.id] = {true, true, order.price, --it->second.end()};
             }
             else
             {
                 auto insertIt = hotBids_.insert(it, {order.price, OrderList{}});
                 insertIt->second.push_back(order);
-                std::size_t idx = insertIt - hotBids_.begin();
-                orderLookup_[order.id] = {true, true, {idx}, --insertIt->second.end()};
-
-                // Update indices for orders after insertion
-                for (auto &pair : orderLookup_)
-                {
-                    if (pair.second.isHot && pair.second.isBuy && pair.second.vectorIndex >= idx && pair.first != order.id)
-                    {
-                        pair.second.vectorIndex++;
-                    }
-                }
+                orderLookup_[order.id] = {true, true, order.price, --insertIt->second.end()};
             }
         }
         else
@@ -582,23 +540,13 @@ namespace hft
             if (it != hotAsks_.end() && it->first == order.price)
             {
                 it->second.push_back(order);
-                orderLookup_[order.id] = {false, true, {static_cast<std::size_t>(it - hotAsks_.begin())}, --it->second.end()};
+                orderLookup_[order.id] = {false, true, order.price, --it->second.end()};
             }
             else
             {
                 auto insertIt = hotAsks_.insert(it, {order.price, OrderList{}});
                 insertIt->second.push_back(order);
-                std::size_t idx = insertIt - hotAsks_.begin();
-                orderLookup_[order.id] = {false, true, {idx}, --insertIt->second.end()};
-
-                // Update indices for orders after insertion
-                for (auto &pair : orderLookup_)
-                {
-                    if (pair.second.isHot && !pair.second.isBuy && pair.second.vectorIndex >= idx && pair.first != order.id)
-                    {
-                        pair.second.vectorIndex++;
-                    }
-                }
+                orderLookup_[order.id] = {false, true, order.price, --insertIt->second.end()};
             }
         }
     }
@@ -609,7 +557,7 @@ namespace hft
         OrderLocation loc;
         loc.isBuy = isBuy;
         loc.isHot = false;
-        loc.mapPrice = order.price;
+        loc.price = order.price;
 
         if (isBuy)
         {
@@ -628,7 +576,7 @@ namespace hft
     }
 
     // Public APIS for future GUI
-    std::size_t HybridOrderBook::getOrderCount() const
+    Index HybridOrderBook::getOrderCount() const
     {
         return orderLookup_.size();
     }

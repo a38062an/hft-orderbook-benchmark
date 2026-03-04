@@ -60,15 +60,116 @@ std::string create_fix_message(uint64_t id, int price, int quantity, int side)
 
 int main(int argc, char *argv[])
 {
+    // Default configuration
     int serverPort = 12345;
     std::string serverHost = "127.0.0.1";
-    int orderCount = 1000000; // Default to 1 million orders
+    int orderCount = 1000000;
+    int minPrice = 90;
+    int maxPrice = 110;
+    int tickSize = 1;
+    int minQty = 1;
+    int maxQty = 100;
+    uint32_t seed = 42;
 
-    // Parse command line argument for number of orders
-    if (argc > 1)
+    // Parse command line arguments
+    // Usage: ./tcp_order_sender [options]
+    // Options:
+    //   --count <n>        Number of orders (default: 1000000)
+    //   --host <ip>        Server host (default: 127.0.0.1)
+    //   --port <n>         Server port (default: 12345)
+    //   --min-price <n>    Minimum price (default: 90)
+    //   --max-price <n>    Maximum price (default: 110)
+    //   --tick <n>         Tick size (default: 1)
+    //   --min-qty <n>      Minimum quantity (default: 1)
+    //   --max-qty <n>      Maximum quantity (default: 100)
+    //   --seed <n>         Random seed (default: 42)
+    for (int i = 1; i < argc; i++)
     {
-        orderCount = std::atoi(argv[1]);
+        std::string arg = argv[i];
+
+        if (arg == "--count" && i + 1 < argc)
+        {
+            orderCount = std::atoi(argv[++i]);
+        }
+        else if (arg == "--host" && i + 1 < argc)
+        {
+            serverHost = argv[++i];
+        }
+        else if (arg == "--port" && i + 1 < argc)
+        {
+            serverPort = std::atoi(argv[++i]);
+        }
+        else if (arg == "--min-price" && i + 1 < argc)
+        {
+            minPrice = std::atoi(argv[++i]);
+        }
+        else if (arg == "--max-price" && i + 1 < argc)
+        {
+            maxPrice = std::atoi(argv[++i]);
+        }
+        else if (arg == "--tick" && i + 1 < argc)
+        {
+            tickSize = std::atoi(argv[++i]);
+        }
+        else if (arg == "--min-qty" && i + 1 < argc)
+        {
+            minQty = std::atoi(argv[++i]);
+        }
+        else if (arg == "--max-qty" && i + 1 < argc)
+        {
+            maxQty = std::atoi(argv[++i]);
+        }
+        else if (arg == "--seed" && i + 1 < argc)
+        {
+            seed = std::atoi(argv[++i]);
+        }
+        else if (arg == "--help" || arg == "-h")
+        {
+            std::cout << "Usage: " << argv[0] << " [options]\n"
+                      << "Options:\n"
+                      << "  --count <n>        Number of orders (default: 1000000)\n"
+                      << "  --host <ip>        Server host (default: 127.0.0.1)\n"
+                      << "  --port <n>         Server port (default: 12345)\n"
+                      << "  --min-price <n>    Minimum price (default: 90)\n"
+                      << "  --max-price <n>    Maximum price (default: 110)\n"
+                      << "  --tick <n>         Tick size (default: 1)\n"
+                      << "  --min-qty <n>      Minimum quantity (default: 1)\n"
+                      << "  --max-qty <n>      Maximum quantity (default: 100)\n"
+                      << "  --seed <n>         Random seed for reproducibility (default: 42)\n"
+                      << "  --help, -h         Show this help message\n";
+            return 0;
+        }
+        else
+        {
+            std::cerr << "Unknown argument: " << arg << "\n";
+            std::cerr << "Use --help for usage information\n";
+            return 1;
+        }
     }
+
+    // Validate configuration
+    if (minPrice >= maxPrice)
+    {
+        std::cerr << "Error: min-price must be less than max-price\n";
+        return 1;
+    }
+    if (tickSize <= 0)
+    {
+        std::cerr << "Error: tick must be greater than 0\n";
+        return 1;
+    }
+    if ((maxPrice - minPrice) % tickSize != 0)
+    {
+        std::cerr << "Warning: price range (" << maxPrice - minPrice
+                  << ") is not evenly divisible by tick size (" << tickSize << ")\n";
+    }
+
+    std::cout << "Configuration:\n"
+              << "  Orders: " << orderCount << "\n"
+              << "  Server: " << serverHost << ":" << serverPort << "\n"
+              << "  Price range: [" << minPrice << ", " << maxPrice << "] with tick " << tickSize << "\n"
+              << "  Quantity range: [" << minQty << ", " << maxQty << "]\n"
+              << "  Random seed: " << seed << "\n";
 
     std::cout << "Preparing " << orderCount << " orders in memory..." << std::endl;
 
@@ -77,14 +178,23 @@ int main(int argc, char *argv[])
     std::vector<std::string> orders;
     orders.reserve(orderCount);
 
-    std::mt19937 randomGenerator(42);
-    std::uniform_int_distribution<int> priceDistribution(90, 110);
-    std::uniform_int_distribution<int> quantityDistribution(1, 100);
+    std::mt19937 randomGenerator(seed);
+
+    // Generate tick-aligned prices only
+    std::vector<int> validPrices;
+    for (int price = minPrice; price <= maxPrice; price += tickSize)
+    {
+        validPrices.push_back(price);
+    }
+
+    std::uniform_int_distribution<size_t> priceIndexDistribution(0, validPrices.size() - 1);
+    std::uniform_int_distribution<int> quantityDistribution(minQty, maxQty);
     std::uniform_int_distribution<int> sideDistribution(1, 2);
 
     for (int i = 0; i < orderCount; ++i)
     {
-        orders.push_back(create_fix_message(i, priceDistribution(randomGenerator), quantityDistribution(randomGenerator), sideDistribution(randomGenerator)));
+        int price = validPrices[priceIndexDistribution(randomGenerator)];
+        orders.push_back(create_fix_message(i, price, quantityDistribution(randomGenerator), sideDistribution(randomGenerator)));
     }
 
     std::cout << "Connecting to " << serverHost << ":" << serverPort << "..." << std::endl;

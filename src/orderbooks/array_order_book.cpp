@@ -1,4 +1,4 @@
-#include "ArrayOrderBook.hpp"
+#include "array_order_book.hpp"
 #include <iostream>
 #include <stdexcept>
 
@@ -33,7 +33,14 @@ namespace hft
 
     void ArrayOrderBook::addOrder(const Order &order)
     {
-        std::size_t indexToInsert = priceToIndex(order.price);
+        // Validate price is within bounds and aligned to tick
+        if (!isValidPrice(order.price))
+        {
+            // Silently reject invalid orders (out of range or not tick-aligned)
+            return;
+        }
+
+        Index indexToInsert = priceToIndex(order.price);
 
         if (order.side == Side::Buy)
         {
@@ -78,7 +85,7 @@ namespace hft
         }
 
         const auto &orderLocation = orderIterator->second;
-        std::size_t indexToCancel = orderLocation.arrayIndex;
+        Index indexToCancel = orderLocation.arrayIndex;
 
         if (orderLocation.isBuy)
         {
@@ -141,8 +148,8 @@ namespace hft
 
         while (cachedBestBid_ >= cachedBestAsk_)
         {
-            std::size_t bidIndex = priceToIndex(cachedBestBid_);
-            std::size_t askIndex = priceToIndex(cachedBestAsk_);
+            Index bidIndex = priceToIndex(cachedBestBid_);
+            Index askIndex = priceToIndex(cachedBestAsk_);
 
             auto &bidList = bidLevels_[bidIndex];
             auto &askList = askLevels_[askIndex];
@@ -200,12 +207,12 @@ namespace hft
     }
 
     // Helpers
-    std::size_t ArrayOrderBook::priceToIndex(Price price) const
+    Index ArrayOrderBook::priceToIndex(Price price) const
     {
         return (price - minPrice_) / tickSize_;
     }
 
-    Price ArrayOrderBook::indexToPrice(std::size_t index) const
+    Price ArrayOrderBook::indexToPrice(Index index) const
     {
         return minPrice_ + (index * tickSize_);
     }
@@ -243,7 +250,7 @@ namespace hft
     void ArrayOrderBook::updateBestAskCache()
     {
         // Scan from lowest price to highest (asks want lowest price)
-        for (std::size_t i = 0; i < numLevels_; ++i)
+        for (Index i = 0; i < numLevels_; ++i)
         {
             if (activeAskLevels_[i])
             {
@@ -266,7 +273,7 @@ namespace hft
         return cachedBestAsk_;
     }
 
-    std::size_t ArrayOrderBook::getOrderCount() const
+    Index ArrayOrderBook::getOrderCount() const
     {
         return orderLookup_.size();
     }

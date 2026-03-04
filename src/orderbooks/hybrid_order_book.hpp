@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../core/IOrderBook.hpp"
+#include "../core/i_order_book.hpp"
 #include <vector>
 #include <map>
 #include <unordered_map>
@@ -12,13 +12,13 @@ namespace hft
     class HybridOrderBook : public IOrderBook
     {
     public:
-        HybridOrderBook(std::size_t maxHotLevels = 20);
+        HybridOrderBook(Index maxHotLevels = 20);
 
         void addOrder(const Order &order) override;
         void cancelOrder(OrderId orderId) override;
         void modifyOrder(OrderId orderId, Quantity newQuantity) override;
         std::vector<Trade> match() override;
-        std::size_t getOrderCount() const override;
+        Index getOrderCount() const override;
 
         Price getBestBid() const override;
         Price getBestAsk() const override;
@@ -35,18 +35,14 @@ namespace hft
         ColdBidsMap coldBids_;
         ColdAsksMap coldAsks_;
 
-        std::size_t maxHotLevels_;
+        Index maxHotLevels_;
 
         // Track where each order lives
         struct OrderLocation
         {
             bool isBuy;
             bool isHot; // true = in vector, false = in map
-            union
-            {
-                std::size_t vectorIndex;
-                Price mapPrice;
-            };
+            Price price;
             OrderList::iterator iterator;
         };
 

@@ -2,27 +2,29 @@
 
 # Create a library for the core components
 add_library(hft_core
-    core/Order.hpp
-    core/Trade.hpp
-    core/IOrderBook.hpp
-    core/Types.hpp
-    core/MatchingEngine.cpp
-    core/MatchingEngine.hpp
-    core/MetricsCollector.hpp
-    orderbooks/MapOrderBook.cpp
-    orderbooks/MapOrderBook.hpp
-    orderbooks/VectorOrderBook.cpp
-    orderbooks/VectorOrderBook.hpp
-    orderbooks/ArrayOrderBook.cpp
-    orderbooks/ArrayOrderBook.hpp
-    orderbooks/HybridOrderBook.cpp
-    orderbooks/HybridOrderBook.hpp
-    network/TCPOrderGateway.cpp
-    network/TCPOrderGateway.hpp
-    network/FIXParser.cpp
-    network/FIXParser.hpp
+    core/order.hpp
+    core/trade.hpp
+    core/i_order_book.hpp
+    core/types.hpp
+    core/matching_engine.cpp
+    core/matching_engine.hpp
+    core/metrics_collector.hpp
+    orderbooks/map_order_book.cpp
+    orderbooks/map_order_book.hpp
+    orderbooks/vector_order_book.cpp
+    orderbooks/vector_order_book.hpp
+    orderbooks/array_order_book.cpp
+    orderbooks/array_order_book.hpp
+    orderbooks/hybrid_order_book.cpp
+    orderbooks/hybrid_order_book.hpp
+    orderbooks/pool_order_book.cpp
+    orderbooks/pool_order_book.hpp
+    network/tcp_order_gateway.cpp
+    network/tcp_order_gateway.hpp
+    network/fix_parser.cpp
+    network/fix_parser.hpp
     utils/rdtsc.hpp
-    utils/LockFreeQueue.hpp
+    utils/lock_free_queue.hpp
 )
 
 target_include_directories(hft_core PUBLIC 

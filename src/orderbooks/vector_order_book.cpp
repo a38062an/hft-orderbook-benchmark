@@ -1,4 +1,4 @@
-#include "VectorOrderBook.hpp"
+#include "vector_order_book.hpp"
 #include <iostream>
 #include <algorithm>
 
@@ -12,7 +12,6 @@ namespace hft
         if (order.side == Side::Buy)
         {
             // Binary search for price level (bids sorted high to low)
-            // "Should this element be LEFT of my search value in sorted order?" is what the lambda answers
             auto bidIterator = std::lower_bound(
                 bids_.begin(), bids_.end(), order.price,
                 [](const auto &priceLevel, Price price)
@@ -24,14 +23,14 @@ namespace hft
             if (bidIterator != bids_.end() && bidIterator->first == order.price)
             {
                 bidIterator->second.push_back(order);
-                orderLookup_[order.id] = {true, static_cast<std::size_t>(bidIterator - bids_.begin()), --bidIterator->second.end()};
+                orderLookup_[order.id] = {true, order.price, --bidIterator->second.end()};
             }
             else
             {
                 // Create new price level
                 auto insertIterator = bids_.insert(bidIterator, {order.price, OrderList{}});
                 insertIterator->second.push_back(order);
-                orderLookup_[order.id] = {true, static_cast<std::size_t>(insertIterator - bids_.begin()), --insertIterator->second.end()};
+                orderLookup_[order.id] = {true, order.price, --insertIterator->second.end()};
             }
         }
         else
@@ -48,14 +47,14 @@ namespace hft
             if (askIterator != asks_.end() && askIterator->first == order.price)
             {
                 askIterator->second.push_back(order);
-                orderLookup_[order.id] = {false, static_cast<std::size_t>(askIterator - asks_.begin()), --askIterator->second.end()};
+                orderLookup_[order.id] = {false, order.price, --askIterator->second.end()};
             }
             else
             {
                 // Create new price level
                 auto insertIterator = asks_.insert(askIterator, {order.price, OrderList{}});
                 insertIterator->second.push_back(order);
-                orderLookup_[order.id] = {false, static_cast<std::size_t>(insertIterator - asks_.begin()), --insertIterator->second.end()};
+                orderLookup_[order.id] = {false, order.price, --insertIterator->second.end()};
             }
         }
     }
@@ -71,45 +70,49 @@ namespace hft
         }
 
         const auto &orderLocation = orderIterator->second;
-        std::size_t vectorIndex = orderLocation.vectorIndex;
+        Price price = orderLocation.price;
 
         if (orderLocation.isBuy)
         {
-            auto &orderList = bids_[vectorIndex].second;
-            orderList.erase(orderLocation.iterator);
-
-            // Clean up empty price levels to keep vector size minimal
-            if (orderList.empty())
-            {
-                bids_.erase(bids_.begin() + vectorIndex);
-
-                // Update lookup indices for orders after this level
-                for (auto &pair : orderLookup_)
+            // Find price level via binary search
+            auto levelIt = std::lower_bound(
+                bids_.begin(), bids_.end(), price,
+                [](const auto &priceLevel, Price p)
                 {
-                    if (pair.second.isBuy && pair.second.vectorIndex > vectorIndex)
-                    {
-                        pair.second.vectorIndex--;
-                    }
+                    return priceLevel.first > p;
+                });
+
+            if (levelIt != bids_.end() && levelIt->first == price)
+            {
+                auto &orderList = levelIt->second;
+                orderList.erase(orderLocation.iterator);
+
+                // Clean up empty price levels to keep vector size minimal
+                if (orderList.empty())
+                {
+                    bids_.erase(levelIt);
                 }
             }
         }
         else
         {
-            auto &orderList = asks_[vectorIndex].second;
-            orderList.erase(orderLocation.iterator);
-
-            // Clean up empty price levels
-            if (orderList.empty())
-            {
-                asks_.erase(asks_.begin() + vectorIndex);
-
-                // Update lookup indices for orders after this level
-                for (auto &pair : orderLookup_)
+            // Find price level via binary search
+            auto levelIt = std::lower_bound(
+                asks_.begin(), asks_.end(), price,
+                [](const auto &priceLevel, Price p)
                 {
-                    if (!pair.second.isBuy && pair.second.vectorIndex > vectorIndex)
-                    {
-                        pair.second.vectorIndex--;
-                    }
+                    return priceLevel.first < p;
+                });
+
+            if (levelIt != asks_.end() && levelIt->first == price)
+            {
+                auto &orderList = levelIt->second;
+                orderList.erase(orderLocation.iterator);
+
+                // Clean up empty price levels
+                if (orderList.empty())
+                {
+                    asks_.erase(levelIt);
                 }
             }
         }
@@ -133,8 +136,6 @@ namespace hft
             return;
         }
 
-        // In a real book, increasing size might lose priority.
-        // For simplicity here, we just update the quantity in place.
         orderIterator->second.iterator->quantity = newQuantity;
     }
 
@@ -203,29 +204,11 @@ namespace hft
             if (bidOrderList.empty())
             {
                 bids_.erase(bids_.begin());
-
-                // Update indices for remaining bid orders
-                for (auto &pair : orderLookup_)
-                {
-                    if (pair.second.isBuy && pair.second.vectorIndex > 0)
-                    {
-                        pair.second.vectorIndex--;
-                    }
-                }
             }
 
             if (askOrderList.empty())
             {
                 asks_.erase(asks_.begin());
-
-                // Update indices for remaining ask orders
-                for (auto &pair : orderLookup_)
-                {
-                    if (!pair.second.isBuy && pair.second.vectorIndex > 0)
-                    {
-                        pair.second.vectorIndex--;
-                    }
-                }
             }
         }
 
@@ -233,7 +216,7 @@ namespace hft
     }
 
     // Public APIS for future GUI
-    std::size_t VectorOrderBook::getOrderCount() const
+    Index VectorOrderBook::getOrderCount() const
     {
         return orderLookup_.size();
     }

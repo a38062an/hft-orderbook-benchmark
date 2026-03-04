@@ -41,6 +41,8 @@ graph TB
         ArrayBook["ArrayOrderBook<br/><<concrete>><br/>---<br/>bids: array<br/>asks: array<br/>bitmap: bitset<br/>---<br/>Tech: std::array<br/>O(1) access<br/>Best cache"]
         
         HybridBook["HybridOrderBook<br/><<concrete>><br/>---<br/>hotBids: vector<br/>coldBids: map<br/>hotAsks: vector<br/>coldAsks: map<br/>---<br/>Tech: Hybrid<br/>Hot vector + Cold map<br/>Proximity-based"]
+        
+        PoolBook["PoolOrderBook<br/><<concrete>><br/>---<br/>orders: vector pool<br/>bids/asks: map<br/>freeList: intrusive<br/>---<br/>Tech: Memory pool<br/>O(1) alloc/free<br/>Intrusive lists"]
     end
 
     subgraph SyncWrappers["Synchronization Strategies"]
@@ -69,10 +71,11 @@ graph TB
     Engine -.->|"enqueue(trade)<br/>PLANNED"| TradeQ
 
     %% Implementation relationships
-    IBook -.->|implements| MapBook
-    IBook -.->|implements| VectorBook
-    IBook -.->|implements| ArrayBook
-    IBook -.->|implements| HybridBook
+    IBook -.-|implements| MapBook
+    IBook -.-|implements| VectorBook
+    IBook -.-|implements| ArrayBook
+    IBook -.-|implements| HybridBook
+    IBook -.-|implements| PoolBook
 
     %% Wrapper relationships
     CoarseLock -.->|wraps| IBook
@@ -89,5 +92,5 @@ graph TB
     classDef implemented fill:#90EE90,stroke:#228B22,stroke-width:2px,padding:20px
     classDef planned fill:#FFB6C1,stroke:#DC143C,stroke-width:2px,stroke-dasharray: 5 5,padding:20px
     
-    class Client,Gateway,Parser,InputQ,Engine,Metrics,IBook,MapBook,VectorBook,ArrayBook,HybridBook implemented
+    class Client,Gateway,Parser,InputQ,Engine,Metrics,IBook,MapBook,VectorBook,ArrayBook,HybridBook,PoolBook implemented
     class TradeQ,CoarseLock,RCU,MarketData,GUI,PersistWorker planned

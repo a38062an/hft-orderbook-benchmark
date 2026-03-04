@@ -1,0 +1,181 @@
+---
+title: PoolOrderBook Data Structure Design
+---
+classDiagram
+    %% Core Types and Enums
+    class Side {
+        <<enumeration>>
+        Buy
+        Sell
+    }
+    
+    class OrderType {
+        <<enumeration>>
+        Limit
+        Market
+    }
+    
+    %% Basic Types (type aliases)
+    class Types {
+        <<typedefs>>
+        Index: size_t
+        OrderId: uint64_t
+        Price: uint64_t
+        Quantity: uint64_t
+        Timestamp: uint64_t
+    }
+    
+    %% Order Structure
+    class Order {
+        +OrderId id
+        +Price price
+        +Quantity quantity
+        +Side side
+        +OrderType type
+        +Timestamp timestamp
+    }
+
+    %% Intrusive Node Structure
+    class OrderNode {
+        <<struct>>
+        +Order order
+        +Index prev
+        +Index next
+        +Index nextFree
+    }
+
+    %% Price Level Metadata
+    class PoolLimitLevel {
+        <<struct>>
+        +Price price
+        +Index head
+        +Index tail
+    }
+    
+    %% Trade Structure
+    class Trade {
+        +OrderId buyOrderId
+        +OrderId sellOrderId
+        +Price price
+        +Quantity quantity
+        +Timestamp timestamp
+    }
+    
+    %% STL Container Types
+    class OrdersVector {
+        <<std::vector~OrderNode~>>
+        +operator[](index) OrderNode&
+        +resize(size)
+        +capacity() size_t
+    }
+    
+    class BidsMap {
+        <<std::map~Price, PoolLimitLevel, greater~Price~~~>>
+        +operator[](price) PoolLimitLevel&
+        +find(price) iterator
+        +erase(iterator)
+        +begin() iterator
+    }
+    
+    class AsksMap {
+        <<std::map~Price, PoolLimitLevel, less~Price~~~>>
+        +operator[](price) PoolLimitLevel&
+        +find(price) iterator
+        +erase(iterator)
+        +begin() iterator
+    }
+    
+    class OrderLookup {
+        <<std::unordered_map~OrderId, Index~>>
+        +operator[](orderId) Index
+        +find(orderId) iterator
+        +erase(orderId)
+    }
+    
+    %% Main Class
+    class PoolOrderBook {
+        -OrdersVector orders_
+        -Index freeHead_
+        -BidsMap bids_
+        -AsksMap asks_
+        -OrderLookup orderLookup_
+        
+        +PoolOrderBook(maxOrders)
+        +addOrder(order) void
+        +cancelOrder(orderId) void
+        +modifyOrder(orderId, qty) void
+        +match() vector~Trade~
+        +getOrderCount() size_t
+        
+        -allocateSlot() Index
+        -freeSlot(idx) void
+        -appendToLevel(ladder, idx, price) void
+        -removeFromLevel(ladder, idx) void
+    }
+    
+    %% Relationships
+    Order --> Side : has
+    Order --> OrderType : has
+    Order --> Types : uses types
+    Trade --> Types : uses types
+    
+    PoolOrderBook "1" *-- "1" OrdersVector : owns (The Pool)
+    OrdersVector "1" *-- "*" OrderNode : contains
+    OrderNode "1" *-- "1" Order : wraps
+    
+    PoolOrderBook "1" *-- "1" BidsMap : owns
+    PoolOrderBook "1" *-- "1" AsksMap : owns
+    BidsMap "1" *-- "*" PoolLimitLevel : maps to
+    AsksMap "1" *-- "*" PoolLimitLevel : maps to
+    
+    PoolOrderBook "1" *-- "1" OrderLookup : owns
+    OrderLookup --> OrderNode : points to (Index)
+    
+    PoolLimitLevel --> OrderNode : links to (head/tail Index)
+    OrderNode --> OrderNode : intrusive links (next/prev Index)
+    
+    %% Notes on Design Decisions
+    note for OrdersVector "std::vector (pre-allocated)
+Contiguous memory block
+O(1) access by Index
+Never resizes/shifts"
+    
+    note for OrderNode "Intrusive Linked List Node
+Stores data AND links
+Eliminates separate node allocation
+Cache locality: High"
+    
+    note for PoolLimitLevel "Head/Tail Indices
+Points into OrdersVector
+Start/End of price queue"
+    
+    note for freeHead_ "Stack Pointer (LIFO)
+Points to first free slot
+O(1) Allocation/Deallocation"
+    
+    note for PoolOrderBook "Add: O(log M) [Map lookup]
+Cancel: O(1) [Index lookup + Unlink]
+Match: O(1) per trade
+Space: O(N) fixed"
+    
+     %% Styling
+    classDef core fill:#90EE90,stroke:#228B22,stroke-width:3px
+    classDef map fill:#D3D3D3,stroke:#696969,stroke-width:2px
+    classDef lookup fill:#E1F5FF,stroke:#0288D1,stroke-width:2px
+    classDef struct fill:#FFE4B5,stroke:#DAA520,stroke-width:2px
+    classDef basicStruct fill:#FFF3E0,stroke:#F57C00,stroke-width:2px
+    classDef enum fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px
+    classDef typedef fill:#FFFDE7,stroke:#F9A825,stroke-width:1px
+    
+    class PoolOrderBook core
+    class BidsMap map
+    class AsksMap map
+    class OrderLookup lookup
+    class OrdersVector lookup
+    class OrderNode struct
+    class PoolLimitLevel struct
+    class Order basicStruct
+    class Trade basicStruct
+    class Side enum
+    class OrderType enum
+    class Types typedef

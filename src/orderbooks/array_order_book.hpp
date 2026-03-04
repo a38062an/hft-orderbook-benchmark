@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../core/IOrderBook.hpp"
+#include "../core/i_order_book.hpp"
 #include <array>
 #include <bitset>
 #include <list>
@@ -20,7 +20,7 @@ namespace hft
         void cancelOrder(OrderId orderId) override;
         void modifyOrder(OrderId orderId, Quantity newQuantity) override;
         std::vector<Trade> match() override;
-        std::size_t getOrderCount() const override;
+        Index getOrderCount() const override;
 
         Price getBestBid() const override;
         Price getBestAsk() const override;
@@ -40,7 +40,7 @@ namespace hft
         Price minPrice_;
         Price maxPrice_;
         Price tickSize_;
-        std::size_t numLevels_; // Calculated: (maxPrice - minPrice) / tickSize + 1
+        Index numLevels_; // Calculated: (maxPrice - minPrice) / tickSize + 1
 
         BidLevelsArray bidLevels_;
         AskLevelsArray askLevels_;
@@ -53,7 +53,7 @@ namespace hft
         struct OrderLocation
         {
             bool isBuy;
-            std::size_t arrayIndex;
+            Index arrayIndex;
             OrderList::iterator iterator;
         };
 
@@ -66,8 +66,8 @@ namespace hft
         Price cachedBestAsk_;
 
         // Helper methods
-        std::size_t priceToIndex(Price price) const;
-        Price indexToPrice(std::size_t index) const;
+        Index priceToIndex(Price price) const;
+        Price indexToPrice(Index index) const;
         bool isValidPrice(Price price) const;
         void updateBestBidCache();
         void updateBestAskCache();

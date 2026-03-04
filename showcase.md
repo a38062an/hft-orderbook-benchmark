@@ -47,9 +47,9 @@ If you want to understand the system from start to finish, read the files in thi
 
 #### 1. The Data (`src/core`)
 
-* `Types.hpp`: See the basic types (`Price`, `Quantity`, `OrderId`).
-* `Order.hpp`: The struct that moves through the system.
-* `IOrderBook.hpp`: The interface that defines what an order book *is*.
+* `types.hpp`: See the basic types (`Price`, `Quantity`, `OrderId`).
+* `order.hpp`: The struct that moves through the system.
+* `i_order_book.hpp`: The interface that defines what an order book *is*.
 
 #### 2. The Entry Point (`src/main.cpp`)
 
@@ -58,16 +58,16 @@ If you want to understand the system from start to finish, read the files in thi
 
 #### 3. The Network Layer (`src/network`)
 
-* `TCPOrderGateway.cpp`: Accepts connections and reads raw bytes.
-* `FIXParser.cpp`: The logic that turns `35=D|...` into an `Order` struct.
+* `tcp_order_gateway.cpp`: Accepts connections and reads raw bytes.
+* `fix_parser.cpp`: The logic that turns `35=D|...` into an `Order` struct.
 
 #### 4. The Bridge (`src/utils`)
 
-* `LockFreeQueue.hpp`: The ring buffer that connects the two threads safely.
+* `lock_free_queue.hpp`: The ring buffer that connects the two threads safely.
 
 #### 5. The Engine (`src/orderbooks`)
 
-* `MapOrderBook.cpp`: The actual matching logic. Look at `addOrder()` and `match()`.
+* `map_order_book.cpp`: The actual matching logic. Look at `addOrder()` and `match()`.
 
 ---
 
@@ -93,7 +93,7 @@ This is where the real work happens. We define a **Library** and an **Executable
 Instead of compiling all `.cpp` files directly into `main`, we bundle the logic (OrderBook, Network, Utils) into a static library called `hft_core`.
 
 ```cmake
-add_library(hft_core ...) # Bundles MapOrderBook.cpp, TCPOrderGateway.cpp, etc.
+add_library(hft_core ...) # Bundles map_order_book.cpp, tcp_order_gateway.cpp, etc.
 ```
 
 **Why?**
@@ -116,8 +116,8 @@ We use `PUBLIC` include directories so that any target linking against `hft_core
 
 ```cmake
 target_include_directories(hft_core PUBLIC 
-    ${CMAKE_CURRENT_SOURCE_DIR}       # Allows #include "network/TCPOrderGateway.hpp"
-    ${CMAKE_CURRENT_SOURCE_DIR}/core  # Allows #include "Order.hpp" (if you wanted short paths)
+    ${CMAKE_CURRENT_SOURCE_DIR}       # Allows #include "network/tcp_order_gateway.hpp"
+    ${CMAKE_CURRENT_SOURCE_DIR}/core  # Allows #include "order.hpp" (if you wanted short paths)
 )
 ```
 

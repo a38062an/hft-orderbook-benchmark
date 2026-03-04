@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/Order.hpp"
-#include "utils/LockFreeQueue.hpp"
+#include "core/order.hpp"
+#include "utils/lock_free_queue.hpp"
 #include <atomic>
 #include <thread>
 #include <vector>

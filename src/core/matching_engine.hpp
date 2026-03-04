@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../utils/LockFreeQueue.hpp"
-#include "MetricsCollector.hpp"
-#include "IOrderBook.hpp"
-#include "../core/Order.hpp"
+#include "../utils/lock_free_queue.hpp"
+#include "metrics_collector.hpp"
+#include "i_order_book.hpp"
+#include "../core/order.hpp"
 #include <atomic>
 
 namespace hft

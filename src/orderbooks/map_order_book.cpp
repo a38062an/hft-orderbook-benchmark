@@ -1,4 +1,4 @@
-#include "MapOrderBook.hpp"
+#include "map_order_book.hpp"
 #include <iostream>
 
 namespace hft
@@ -154,7 +154,7 @@ namespace hft
     }
 
     // Public APIS for future GUI
-    std::size_t MapOrderBook::getOrderCount() const
+    Index MapOrderBook::getOrderCount() const
     {
         return orderLookup_.size();
     }

@@ -1,11 +1,12 @@
-#include "core/MatchingEngine.hpp"
-#include "network/TCPOrderGateway.hpp"
-#include "orderbooks/MapOrderBook.hpp"
-#include "utils/LockFreeQueue.hpp"
+#include "core/matching_engine.hpp"
+#include "network/tcp_order_gateway.hpp"
+#include "orderbooks/map_order_book.hpp"
+#include "utils/lock_free_queue.hpp"
+#include "utils/thread_pinning.hpp"
 #include <iostream>
 #include <atomic>
 #include <csignal>
-#include <thread>
+
 
 using namespace hft;
 
@@ -27,30 +28,25 @@ int main()
 
     std::cout << "Initializing HFT Orderbook Benchmark Server..." << std::endl;
 
-    // 1. Initialize Shared Queue (SPSC)
-    // Capacity must be power of 2
-    LockFreeQueue<Order, 1024> orderQueue;
-
-    // 2. Initialize Order Book
-    MapOrderBook orderBook;
-
-    // 3. Initialize Components
-    // Gateway produces to queue
+    LockFreeQueue<Order, 1024> orderQueue; 
+    MapOrderBook orderBook; // Can be swapped out for other order book implementations
     TCPOrderGateway gateway(12345, orderQueue);
-
-    // Engine consumes from queue and processes via order book
     MatchingEngine engine(orderQueue, orderBook);
 
-    // 4. Start Network Thread
+    // Start Gateway to start accepting clients
     std::cout << "Starting TCP Gateway on port 12345..." << std::endl;
     gateway.start();
 
-    // 5. Run Matching Engine (Worker Thread)
-    // In a real HFT setup, we would pin this thread to a specific core here.
+    // Start Matching Engine Loop to consume from queue and process via order book
+    if (hft::pinToCore(0)) {
+        std::cout << "Matching Engine thread successfully pinned to core 0." << std::endl;
+    } else {
+        std::cerr << "Warning: Failed to pin thread to core 0." << std::endl;
+    }
     std::cout << "Starting Matching Engine Loop..." << std::endl;
     engine.run(isApplicationRunning);
 
-    // 6. Shutdown
+    // Stop Gateway when application is shutting down
     std::cout << "Stopping Gateway..." << std::endl;
     gateway.stop();
 

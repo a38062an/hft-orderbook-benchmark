@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/IOrderBook.hpp"
+#include "core/i_order_book.hpp"
 #include <map>
 #include <unordered_map>
 #include <list>
@@ -15,7 +15,7 @@ namespace hft
         void cancelOrder(OrderId orderId) override;
         void modifyOrder(OrderId orderId, Quantity newQuantity) override;
         std::vector<Trade> match() override;
-        std::size_t getOrderCount() const override;
+        Index getOrderCount() const override;
 
         Price getBestBid() const override;
         Price getBestAsk() const override;

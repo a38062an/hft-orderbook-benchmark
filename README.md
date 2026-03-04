@@ -1,64 +1,52 @@
 # HFT Orderbook Benchmark
 
-## Overview
-
-This project is a systematic benchmarking of order book data structures and reader/writer synchronization strategies for low-latency trading systems.
-
-## Structure
-
-- `src/core`: Core abstractions (Order, Trade, IOrderBook)
-- `src/orderbooks`: Order book implementations (Map, SkipList, Array)
-- `src/sync`: Synchronization wrappers (Coarse Lock, RCU, etc.)
-- `src/network`: TCP Gateway and FIX Parser
-- `src/utils`: Instrumentation and utilities
-
-## Building
+## Build Instructions
+System requirements: CMake, C++17 compatible compiler, Python 3.
 
 ```bash
-mkdir build && cd build
+mkdir -p build && cd build
 cmake ..
-make -j
+make -j$(sysctl -n hw.ncpu)
 ```
 
-## Running
+## Core Components
 
-### Start the matching engine server
-
+### Exchange Server
+Matching engine server with integrated TCP gateway and FIX 4.2 parser.
 ```bash
-cd build/src
-./hft_exchange_server
+./build/src/hft_exchange_server
 ```
 
-### Send orders from a client
-
+### Order Sender Client
+Generates FIX protocol orders with overlapping price ranges to simulate matching opportunities.
 ```bash
-# C++ client (sends 1M orders by default)
-cd build/src
-./tcp_order_sender [num_orders]
-
-# Python client
-python3 clients/tcp_order_sender.py
+./build/src/tcp_order_sender [num_orders]
 ```
 
-### Order Generation Details
+## Performance Benchmarking
 
-The `tcp_order_sender` generates random orders with:
+### Benchmarking Suite
+Tests multiple implementations (Map, Vector, Array, Hybrid, Pool) across scenarios including tight spreads, high cancellations, and read-heavy workloads.
+```bash
+./build/benchmarks/orderbook_benchmark
+```
+Results are saved to `results/` with the prefix `benchmark_breakdown_`.
 
-- **Side**: Random (1=Buy, 2=Sell) - 50/50 distribution
-- **Price**: Random between 90-110 (uniform distribution)
-- **Quantity**: Random between 1-100 shares
-- **Order Type**: Limit orders (FIX tag 40=2)
-- **Format**: FIX 4.2 protocol messages
+### Scripted Execution
+Automates multiple benchmark runs to minimize noise.
+```bash
+./scripts/run_benchmark.sh
+```
 
-Orders are generated with overlapping price ranges to create matching opportunities:
+### Data Analysis and Visualization
+```bash
+# Aggregate multiple CSV results
+python3 scripts/combine_results.py
 
-- Buy orders at prices 90-110
-- Sell orders at prices 90-110
-- Orders with price overlap will match (e.g., Buy@105 matches Sell@100)
+# Generate performance plots
+python3 scripts/plot_results.py
+```
+Visualizations are exported to `docs/plots/`.
 
-### Output
-
-After stopping the server (Ctrl+C), you'll see:
-
-- **Matching Statistics**: Orders processed, trades executed, volume traded, match rate
-- **Latency Statistics**: P50, P99, Max, Mean processing time in CPU cycles
+### Platform Compatibility
+On macOS, strict thread pinning is restricted by the kernel. The `thread_policy_set` calls act as affinity hints. "Failed to set thread affinity" warnings on macOS are expected and do not prevent the benchmark from running. Full hardware pinning is available on Linux systems.

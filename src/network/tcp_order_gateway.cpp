@@ -1,5 +1,5 @@
-#include "TCPOrderGateway.hpp"
-#include "FIXParser.hpp"
+#include "tcp_order_gateway.hpp"
+#include "fix_parser.hpp"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
