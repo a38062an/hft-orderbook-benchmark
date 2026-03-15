@@ -189,7 +189,94 @@ std::vector<Order> OrderGenerator::generateWorstCaseFIFO(size_t count)
 
 std::vector<Order> OrderGenerator::generateMixed(size_t count)
 {
-    return generateTightSpread(count);
+    std::vector<Order> orders;
+    orders.reserve(count);
+
+    std::vector<Price> nearBuyPrices = {9995, 9996, 9997, 9998, 9999, 10000};
+    std::vector<Price> nearSellPrices = {10001, 10002, 10003, 10004, 10005, 10006};
+    std::vector<Price> deepBuyPrices = {9950, 9960, 9970, 9980, 9990};
+    std::vector<Price> deepSellPrices = {10010, 10020, 10030, 10040, 10050};
+    std::vector<Price> extremeBuyPrices = {9400, 9500, 9600};
+    std::vector<Price> extremeSellPrices = {10400, 10500, 10600};
+    std::vector<OrderId> activeOrders;
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        double draw = uniform_dist_(rng_);
+
+        // Moderate cancellations make mixed distinct without collapsing into the
+        // dedicated high_cancellation regime.
+        if (!activeOrders.empty() && draw < 0.18)
+        {
+            size_t cancelIdx = static_cast<size_t>(uniform_dist_(rng_) * activeOrders.size());
+            if (cancelIdx >= activeOrders.size())
+            {
+                cancelIdx = activeOrders.size() - 1;
+            }
+
+            Order cancelOrder;
+            cancelOrder.id = activeOrders[cancelIdx];
+            cancelOrder.quantity = 0;
+            cancelOrder.price = 10000;
+            cancelOrder.side = Side::Buy;
+            cancelOrder.type = OrderType::Limit;
+            cancelOrder.timestamp =
+                static_cast<Timestamp>(std::chrono::system_clock::now().time_since_epoch().count() + i);
+
+            activeOrders.erase(activeOrders.begin() + cancelIdx);
+            orders.push_back(cancelOrder);
+            continue;
+        }
+
+        Side side = (uniform_dist_(rng_) < 0.5) ? Side::Buy : Side::Sell;
+        Price price = 10000;
+
+        // 55% near-spread activity, 30% deeper resting liquidity, 15% extremes.
+        double regime = uniform_dist_(rng_);
+        if (regime < 0.55)
+        {
+            const auto &priceLevels = side == Side::Buy ? nearBuyPrices : nearSellPrices;
+            size_t idx = static_cast<size_t>(uniform_dist_(rng_) * priceLevels.size());
+            if (idx >= priceLevels.size())
+            {
+                idx = priceLevels.size() - 1;
+            }
+            price = priceLevels[idx];
+        }
+        else if (regime < 0.85)
+        {
+            const auto &priceLevels = side == Side::Buy ? deepBuyPrices : deepSellPrices;
+            size_t idx = static_cast<size_t>(uniform_dist_(rng_) * priceLevels.size());
+            if (idx >= priceLevels.size())
+            {
+                idx = priceLevels.size() - 1;
+            }
+            price = priceLevels[idx];
+        }
+        else
+        {
+            const auto &priceLevels = side == Side::Buy ? extremeBuyPrices : extremeSellPrices;
+            size_t idx = static_cast<size_t>(uniform_dist_(rng_) * priceLevels.size());
+            if (idx >= priceLevels.size())
+            {
+                idx = priceLevels.size() - 1;
+            }
+            price = priceLevels[idx];
+        }
+
+        Order order;
+        order.id = orderIdCounter_++;
+        order.price = price;
+        order.quantity = 100 + static_cast<Quantity>(uniform_dist_(rng_) * 900);
+        order.side = side;
+        order.type = OrderType::Limit;
+        order.timestamp = static_cast<Timestamp>(std::chrono::system_clock::now().time_since_epoch().count() + i);
+
+        activeOrders.push_back(order.id);
+        orders.push_back(order);
+    }
+
+    return orders;
 }
 
 std::vector<Order> OrderGenerator::generateHighCancellation(size_t count)
