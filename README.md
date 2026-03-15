@@ -19,9 +19,12 @@ To perform a complete research sweep of all implementations and generate dissert
 ./build/benchmarks/orderbook_benchmark --mode direct --book all --scenario all --runs 5
 
 # 2. Gateway Mode Sweep (Full Systemic Latency + Queuing)
-./scripts/run_gateway_sweep.sh all 5 10000
+./scripts/run_gateway_sweep.sh --scenario all --runs 5 --orders 10000
 
-# 3. Generate Dissertation Plots
+# 3. MPSC Concurrency Sweep (Multi-Producer Exchange Simulation)
+./build/benchmarks/orderbook_benchmark --mode mpsc --book all --scenario mixed --producers all --orders 10000 --runs 5
+
+# 4. Generate Dissertation Plots
 python3 scripts/plot_benchmark.py results/results.csv
 ```
 This will populate the `plots/` directory with comparative analysis of every order book implementation under various market conditions.
@@ -57,7 +60,34 @@ Supports two latency measurement modes:
 # This script automatically restarts the server for each book type
 # Pass 'all' to test every market scenario across every book
 ./scripts/run_gateway_sweep.sh all
+
+# MPSC Mode (Multi-Producer Concurrency Sweep)
+# Simulates multiple concurrent gateway clients all pushing into one matching engine
+# --producers all automatically runs 1, 2, 4, and 8 producers in sequence
+./build/benchmarks/orderbook_benchmark --mode mpsc --book all --scenario mixed --producers all
+# Or test a specific producer count
+./build/benchmarks/orderbook_benchmark --mode mpsc --book all --scenario mixed --producers 4
 ```
+
+### 3. MPSC Mode — Multi-Producer Exchange Simulation
+`--mode mpsc` directly addresses the question: *"What happens to latency and throughput as concurrent producer count scales?"*
+
+Unlike the SPSC-based Gateway mode (one client, one TCP stream), MPSC spawns **N producer threads** all pushing into a lockfree `moodycamel::ConcurrentQueue` with a **single consumer** (the matching engine). This models a realistic exchange where multiple algorithmic clients submit orders simultaneously.
+
+**Key metrics produced:**
+
+| Column | What it measures |
+|---|---|
+| `Latency(ns)` / `Que(ns)` | Mean time from producer stamp → consumer receive. Measures queue contention. |
+| `P99(ns)` | 99th percentile queue latency — tail behaviour under concurrent load |
+| `Eng(ns)` | Matching engine time (`addOrder + match`). Should stay **flat** as producers increase — proves engine isolation. |
+| `Net(ns)` | Repurposed to display the **producer count** for that row |
+| `Throughput` | Total orders/sec across all producers combined |
+| `Match(ns)` | Dropped order count (should be 0; queue capacity is 16,384 entries) |
+
+**`--producers all`** runs producer counts 1 → 2 → 4 → 8 in a single command, storing each as a separate row in the CSV — ready for plotting a scalability curve.
+
+```bash
 
 ## Custom FIX Protocol Specification
 For the purpose of this HFT benchmark, we use a subset of the FIX 4.2 protocol with proprietary extensions (User-Defined Fields) to enable high-precision synchronization and timing.
@@ -91,9 +121,9 @@ The tool prints summary statistics (Mean, P99, Max) and throughput to the consol
 ## Analysis and Visualization
 
 ### Unified Reporting
-Consolidates client-side injection latency and server-side internal processing time (Wire-to-Match) into a single CSV row.
-- **Appending**: Successive runs with the same `--csv_out` will append new rows to the file.
-- **Statistics**: The plotting script automatically aggregates multiple runs of the same "Mode + Book" combination, showing the mean and variance (error bars).
+Consolidates client-side injection latency and server-side internal processing time into a single averaged CSV row.
+- **Statistical Rigor**: When `--runs N` is used, the system automatically calculates the **Mean** and **Standard Deviation** for Latency, P99, and Throughput across all $N$ runs.
+- **Reporting**: The console summary table displays results as `Mean ± StdDev`, and the CSV includes dedicated variance columns (`LatencyStdDev_ns`, `P99StdDev_ns`) for error-bar plotting.
 
 ### Plotting
 ```bash

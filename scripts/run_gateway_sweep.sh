@@ -8,9 +8,32 @@ PORT=12345
 # Usage: ./scripts/run_gateway_sweep.sh [scenario|all] [runs] [orders]
 # Example: ./scripts/run_gateway_sweep.sh all 5 10000
 
-SCENARIO=${1:-"mixed"}
-RUNS=${2:-3}
-ORDERS=${3:-10000}
+# Default Values
+SCENARIO="mixed"
+RUNS=3
+ORDERS=10000
+
+# Parse Arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --scenario) SCENARIO="$2"; shift 2 ;;
+        --runs)     RUNS="$2";     shift 2 ;;
+        --orders)   ORDERS="$2";   shift 2 ;;
+        --book)     BOOKS="$2";    shift 2 ;; # Allow overriding BOOKS via flag too
+        *)
+            # Support positional arguments if no flags are used
+            if [[ "$1" != --* ]]; then
+                SCENARIO=${1:-$SCENARIO}
+                RUNS=${2:-$RUNS}
+                ORDERS=${3:-$ORDERS}
+                break
+            else
+                echo "Unknown option: $1"
+                exit 1
+            fi
+            ;;
+    esac
+done
 
 # Ensure results directory exists
 mkdir -p results

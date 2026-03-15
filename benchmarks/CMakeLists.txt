@@ -15,6 +15,7 @@ target_link_libraries(orderbook_benchmark
 target_include_directories(orderbook_benchmark
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/libs
 )
 
 # Copy to build directory for easy execution
