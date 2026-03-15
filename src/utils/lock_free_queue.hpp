@@ -1,13 +1,13 @@
 #pragma once
 
-#include <cstddef>
 #include <array>
 #include <atomic>
 #include <bit>
 #include <concepts>
+#include <cstddef>
 #include <new>
 
-namespace hft 
+namespace hft
 {
 
 // Default to 64 cache-line padding where available
@@ -17,10 +17,8 @@ template <typename ItemType, size_t QueueCapacity>
     requires(std::has_single_bit(QueueCapacity))
 class LockFreeQueue
 {
-public:
-    LockFreeQueue() 
-        : writeIndex_{0}
-        , readIndex_{0}
+  public:
+    LockFreeQueue() : writeIndex_{0}, readIndex_{0}
     {
     }
 
@@ -82,7 +80,7 @@ public:
         return QueueCapacity;
     }
 
-private:
+  private:
     // Putting alignas on their own cache lines (64 bit per line)
     alignas(CACHE_LINE_SIZE) std::atomic<size_t> writeIndex_;
     alignas(CACHE_LINE_SIZE) std::atomic<size_t> readIndex_;

@@ -1,24 +1,24 @@
 #pragma once
+#include <chrono>
 #include <cstdint>
 
-namespace hft 
+namespace hft
 {
 
-inline uint64_t rdtsc() 
+/**
+ * @brief Returns current time in nanoseconds since epoch.
+ * Uses std::chrono::high_resolution_clock for cross-platform portability.
+ *
+ * Note: this is NOT the x86 RDTSC CPU cycle counter. For true HFT production use,
+ * replace with __builtin_ia32_rdtsc() combined with a known CPU frequency for ns
+ * conversion. std::chrono is used here for macOS/Linux portability and dissertation
+ * clarity — the overhead is acceptable for microbenchmark purposes.
+ */
+inline uint64_t getCurrentTimeNs()
 {
-#ifdef __aarch64__
-    uint64_t val;
-    __asm__ __volatile__("mrs %0, cntvct_el0" : "=r"(val));
-    return val;
-#elif defined(__x86_64__) || defined(__i386__)
-    unsigned int lo, hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    return ((uint64_t)hi << 32) | lo;
-#else
-    // Fallback for other architectures
-    #include <chrono>
-    return std::chrono::high_resolution_clock::now().time_since_epoch().count();
-#endif
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+               std::chrono::high_resolution_clock::now().time_since_epoch())
+        .count();
 }
 
 } // namespace hft

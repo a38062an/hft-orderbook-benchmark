@@ -26,7 +26,7 @@ graph TB
     end
 
     subgraph EngineCore["Matching Engine Core"]
-        Engine["MatchingEngine<br/><<service>><br/>---<br/>inputQueue: ref<br/>orderBook: MapOrderBook<br/>metrics: MetricsCollector<br/>---<br/>run()<br/>processOrder()<br/>---<br/>Tech: Single-threaded<br/>Busy-wait loop<br/>rdtsc() timing<br/>Thread: P-Core 0"]
+        Engine["MatchingEngine<br/><<service>><br/>---<br/>inputQueue: ref<br/>orderBook: MapOrderBook<br/>metrics: MetricsCollector<br/>---<br/>run()<br/>processOrder()<br/>---<br/>Tech: Single-threaded<br/>Busy-wait loop<br/>getCurrentTimeNs() timing<br/>Thread: P-Core 0"]
         
         Metrics["MetricsCollector<br/><<instrumentation>><br/>---<br/>orderCount: atomic<br/>tradeCount: atomic<br/>latencies: vector<br/>---<br/>recordLatency()<br/>incrementOrders()<br/>---<br/>Tech: Lock-free<br/>sub-10ns overhead"]
     end

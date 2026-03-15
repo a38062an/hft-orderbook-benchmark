@@ -21,8 +21,6 @@ add_library(hft_core
     orderbooks/pool_order_book.hpp
     network/tcp_order_gateway.cpp
     network/tcp_order_gateway.hpp
-    network/fix_parser.cpp
-    network/fix_parser.hpp
     utils/rdtsc.hpp
     utils/lock_free_queue.hpp
 )
@@ -31,6 +29,7 @@ target_include_directories(hft_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/core
     ${CMAKE_CURRENT_SOURCE_DIR}/utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/../libs
 )
 
 target_link_libraries(hft_core PUBLIC pthread)

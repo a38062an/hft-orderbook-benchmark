@@ -6,26 +6,34 @@
 #include <thread>
 #include <vector>
 
-namespace hft 
+namespace hft
 {
 
-class TCPOrderGateway 
+class MetricsCollector;
+
+class TCPOrderGateway
 {
-public:
-    TCPOrderGateway(int port, LockFreeQueue<Order, 1024>& queue);
+  public:
+    TCPOrderGateway(int port, LockFreeQueue<Order, 1024> &queue);
     ~TCPOrderGateway();
 
     void start();
     void stop();
 
-private:
+    void setMetricsCollector(const MetricsCollector *metrics)
+    {
+        metrics_ = metrics;
+    }
+
+  private:
     void acceptLoop();
     void clientHandler(int clientSock);
 
     int serverSocket_;
     int port_;
-    LockFreeQueue<Order, 1024>& orderQueue_;
+    LockFreeQueue<Order, 1024> &orderQueue_;
     std::atomic<bool> running_;
+    const MetricsCollector *metrics_ = nullptr;
     std::jthread acceptConnectionThread_;
     std::vector<std::jthread> clientThreads_;
 };

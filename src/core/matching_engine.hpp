@@ -1,37 +1,37 @@
 #pragma once
 
-#include "../utils/lock_free_queue.hpp"
-#include "metrics_collector.hpp"
-#include "i_order_book.hpp"
 #include "../core/order.hpp"
+#include "../utils/lock_free_queue.hpp"
+#include "i_order_book.hpp"
+#include "metrics_collector.hpp"
 #include <atomic>
 
 namespace hft
 {
 
-    class MatchingEngine
-    {
-    public:
-        // Constructor takes input queue and order book reference (dependency injection)
-        MatchingEngine(LockFreeQueue<Order, 1024> &inputQueue, IOrderBook &orderBook);
+class MatchingEngine
+{
+  public:
+    // Constructor takes input queue and order book reference (dependency injection)
+    MatchingEngine(LockFreeQueue<Order, 1024> &inputQueue, IOrderBook &orderBook);
 
-        // Main loop for the worker thread
-        void run(std::atomic<bool> &running);
+    // Main loop for the worker thread
+    void run(std::atomic<bool> &running);
 
-        // Core processing method (kept for testing/direct access)
-        void processOrder(const Order &order);
+    // Core processing method (kept for testing/direct access)
+    void processOrder(const Order &order);
 
-        // Accessors for verification
-        const MetricsCollector &getMetrics() const;
+    // Accessors for verification
+    const MetricsCollector &getMetrics() const;
 
-        // Const / Non-const for write/read and read only access
-        IOrderBook &getOrderBook();
-        const IOrderBook &getOrderBook() const;
+    // Const / Non-const for write/read and read only access
+    IOrderBook &getOrderBook();
+    const IOrderBook &getOrderBook() const;
 
-    private:
-        LockFreeQueue<Order, 1024> &inputQueue_;
-        IOrderBook &orderBook_; // Reference to injected order book
-        MetricsCollector metrics_;
-    };
+  private:
+    LockFreeQueue<Order, 1024> &inputQueue_;
+    IOrderBook &orderBook_; // Reference to injected order book
+    MetricsCollector metrics_;
+};
 
 } // namespace hft

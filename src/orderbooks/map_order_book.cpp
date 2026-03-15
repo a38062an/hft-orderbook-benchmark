@@ -4,177 +4,174 @@
 namespace hft
 {
 
-    // Adds a new order to the book.
-    // Uses a std::map for price levels (automatically sorted) and a std::list for time priority.
-    void MapOrderBook::addOrder(const Order &order)
+// Adds a new order to the book.
+// Uses a std::map for price levels (automatically sorted) and a std::list for time priority.
+void MapOrderBook::addOrder(const Order &order)
+{
+    if (order.side == Side::Buy)
     {
-        if (order.side == Side::Buy)
-        {
-            auto &orderList = bids_[order.price];
-            orderList.push_back(order);
-            // Store iterator for O(1) lookup/cancellation later
-            orderLookup_[order.id] = {true, order.price, --orderList.end()};
-        }
-        else
-        {
-            auto &orderList = asks_[order.price];
-            orderList.push_back(order);
-            orderLookup_[order.id] = {false, order.price, --orderList.end()};
-        }
+        auto &orderList = bids_[order.price];
+        orderList.push_back(order);
+        // Store iterator for O(1) lookup/cancellation later
+        orderLookup_[order.id] = {true, order.price, --orderList.end()};
+    }
+    else
+    {
+        auto &orderList = asks_[order.price];
+        orderList.push_back(order);
+        orderLookup_[order.id] = {false, order.price, --orderList.end()};
+    }
+}
+
+// Cancels an existing order by ID.
+// Uses the lookup table to find the order's location in O(1) (average) or O(log N).
+void MapOrderBook::cancelOrder(OrderId orderId)
+{
+    auto orderIterator = orderLookup_.find(orderId);
+    if (orderIterator == orderLookup_.end())
+    {
+        return; // Order not found
     }
 
-    // Cancels an existing order by ID.
-    // Uses the lookup table to find the order's location in O(1) (average) or O(log N).
-    void MapOrderBook::cancelOrder(OrderId orderId)
+    const auto &orderLocation = orderIterator->second;
+    if (orderLocation.isBuy)
     {
-        auto orderIterator = orderLookup_.find(orderId);
-        if (orderIterator == orderLookup_.end())
+        auto &orderList = bids_[orderLocation.price]; // Get the list of that price
+        orderList.erase(orderLocation.iterator);      // Delete the instruments in that price list
+        // Clean up empty price levels to keep map size minimal
+        if (orderList.empty())
         {
-            return; // Order not found
+            bids_.erase(orderLocation.price);
         }
+    }
+    else
+    {
+        auto &orderList = asks_[orderLocation.price];
+        orderList.erase(orderLocation.iterator);
+        if (orderList.empty())
+        {
+            asks_.erase(orderLocation.price);
+        }
+    }
+    orderLookup_.erase(orderIterator);
+}
 
-        const auto &orderLocation = orderIterator->second;
-        if (orderLocation.isBuy)
-        {
-            auto &orderList = bids_[orderLocation.price]; // Get the list of that price
-            orderList.erase(orderLocation.iterator);      // Delete the instruments in that price list
-            // Clean up empty price levels to keep map size minimal
-            if (orderList.empty())
-            {
-                bids_.erase(orderLocation.price);
-            }
-        }
-        else
-        {
-            auto &orderList = asks_[orderLocation.price];
-            orderList.erase(orderLocation.iterator);
-            if (orderList.empty())
-            {
-                asks_.erase(orderLocation.price);
-            }
-        }
-        orderLookup_.erase(orderIterator);
+// Modifies the quantity of an existing order.
+void MapOrderBook::modifyOrder(OrderId orderId, Quantity newQuantity)
+{
+    auto orderIterator = orderLookup_.find(orderId);
+    if (orderIterator == orderLookup_.end())
+    {
+        return;
     }
 
-    // Modifies the quantity of an existing order.
-    void MapOrderBook::modifyOrder(OrderId orderId, Quantity newQuantity)
+    // If modifying to zero quantity, cancel instead
+    if (newQuantity == 0)
     {
-        auto orderIterator = orderLookup_.find(orderId);
-        if (orderIterator == orderLookup_.end())
-        {
-            return;
-        }
-
-        // If modifying to zero quantity, cancel instead
-        if (newQuantity == 0)
-        {
-            cancelOrder(orderId);
-            return;
-        }
-
-        // In a real book, increasing size might lose priority.
-        // For simplicity here, we just update the quantity in place.
-        orderIterator->second.iterator->quantity = newQuantity;
+        cancelOrder(orderId);
+        return;
     }
 
-    // Matches buy and sell orders based on Price-Time priority.
-    // Returns a vector of executed trades.
-    std::vector<Trade> MapOrderBook::match()
+    // In a real book, increasing size might lose priority.
+    // For simplicity here, we just update the quantity in place.
+    orderIterator->second.iterator->quantity = newQuantity;
+}
+
+// Matches buy and sell orders based on Price-Time priority.
+// Returns a vector of executed trades.
+std::vector<Trade> MapOrderBook::match()
+{
+    std::vector<Trade> trades;
+    static uint64_t matchCounter{0};
+
+    // Continue matching while there are overlapping prices
+    while (!bids_.empty() && !asks_.empty())
     {
-        std::vector<Trade> trades;
-        static uint64_t matchCounter{0};
+        auto bestBidIterator = bids_.begin(); // Highest buy price
+        auto bestAskIterator = asks_.begin(); // Lowest sell price
 
-        // Continue matching while there are overlapping prices
-        while (!bids_.empty() && !asks_.empty())
+        // Check for price overlap (Bid >= Ask)
+        if (bestBidIterator->first < bestAskIterator->first)
         {
-            auto bestBidIterator = bids_.begin(); // Highest buy price
-            auto bestAskIterator = asks_.begin(); // Lowest sell price
+            break; // No overlap, spread is open
+        }
 
-            // Check for price overlap (Bid >= Ask)
-            if (bestBidIterator->first < bestAskIterator->first)
+        // Iterator to the best price lists
+        auto &bidOrderList = bestBidIterator->second;
+        auto &askOrderList = bestAskIterator->second;
+
+        // Match orders at this price level
+        while (!bidOrderList.empty() && !askOrderList.empty())
+        {
+            auto &bidOrder = bidOrderList.front();
+            auto &askOrder = askOrderList.front();
+
+            Quantity tradeQty = std::min(bidOrder.quantity, askOrder.quantity);
+
+            trades.push_back({bidOrder.id, askOrder.id, askOrder.price, tradeQty});
+
+            matchCounter++;
+            if (matchCounter % 1000 == 0)
             {
-                break; // No overlap, spread is open
+                std::cout << "Match #" << matchCounter << ": "
+                          << "Bid=" << bidOrder.id << " "
+                          << "Ask=" << askOrder.id << " "
+                          << "Price=" << bestAskIterator->first << " "
+                          << "Qty=" << tradeQty << std::endl;
             }
 
-            // Iterator to the best price lists
-            auto &bidOrderList = bestBidIterator->second;
-            auto &askOrderList = bestAskIterator->second;
+            bidOrder.quantity -= tradeQty;
+            askOrder.quantity -= tradeQty;
 
-            // Match orders at this price level
-            while (!bidOrderList.empty() && !askOrderList.empty())
+            // Remove filled orders
+            if (bidOrder.quantity == 0)
             {
-                auto &bidOrder = bidOrderList.front();
-                auto &askOrder = askOrderList.front();
-
-                Quantity tradeQty = std::min(bidOrder.quantity, askOrder.quantity);
-
-                trades.push_back({bidOrder.id,
-                                  askOrder.id,
-                                  askOrder.price,
-                                  tradeQty});
-
-                matchCounter++;
-                if (matchCounter % 1000 == 0)
-                {
-                    std::cout << "Match #" << matchCounter << ": "
-                              << "Bid=" << bidOrder.id << " "
-                              << "Ask=" << askOrder.id << " "
-                              << "Price=" << bestAskIterator->first << " "
-                              << "Qty=" << tradeQty << std::endl;
-                }
-
-                bidOrder.quantity -= tradeQty;
-                askOrder.quantity -= tradeQty;
-
-                // Remove filled orders
-                if (bidOrder.quantity == 0)
-                {
-                    orderLookup_.erase(bidOrder.id);
-                    bidOrderList.pop_front();
-                }
-                if (askOrder.quantity == 0)
-                {
-                    orderLookup_.erase(askOrder.id);
-                    askOrderList.pop_front();
-                }
+                orderLookup_.erase(bidOrder.id);
+                bidOrderList.pop_front();
             }
-
-            // Clean up empty price levels
-            if (bidOrderList.empty())
+            if (askOrder.quantity == 0)
             {
-                bids_.erase(bestBidIterator);
-            }
-            if (askOrderList.empty())
-            {
-                asks_.erase(bestAskIterator);
+                orderLookup_.erase(askOrder.id);
+                askOrderList.pop_front();
             }
         }
 
-        return trades;
-    }
-
-    // Public APIS for future GUI
-    Index MapOrderBook::getOrderCount() const
-    {
-        return orderLookup_.size();
-    }
-
-    Price MapOrderBook::getBestBid() const
-    {
-        if (bids_.empty())
+        // Clean up empty price levels
+        if (bidOrderList.empty())
         {
-            return 0; // No bids in the book
+            bids_.erase(bestBidIterator);
         }
-        return bids_.begin()->first; // First key is highest price (std::greater)
+        if (askOrderList.empty())
+        {
+            asks_.erase(bestAskIterator);
+        }
     }
 
-    Price MapOrderBook::getBestAsk() const
+    return trades;
+}
+
+// Public APIS for future GUI
+Index MapOrderBook::getOrderCount() const
+{
+    return orderLookup_.size();
+}
+
+Price MapOrderBook::getBestBid() const
+{
+    if (bids_.empty())
     {
-        if (asks_.empty())
-        {
-            return std::numeric_limits<Price>::max(); // No asks in the book
-        }
-        return asks_.begin()->first; // First key is lowest price (std::less)
+        return 0; // No bids in the book
     }
+    return bids_.begin()->first; // First key is highest price (std::greater)
+}
+
+Price MapOrderBook::getBestAsk() const
+{
+    if (asks_.empty())
+    {
+        return std::numeric_limits<Price>::max(); // No asks in the book
+    }
+    return asks_.begin()->first; // First key is lowest price (std::less)
+}
 
 } // namespace hft

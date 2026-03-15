@@ -1,7 +1,8 @@
 #include "order_generator.hpp"
 #include <chrono>
 
-namespace hft {
+namespace hft
+{
 
 std::vector<Order> OrderGenerator::generateTightSpread(size_t count)
 {
@@ -14,9 +15,7 @@ std::vector<Order> OrderGenerator::generateTightSpread(size_t count)
     for (size_t i = 0; i < count; ++i)
     {
         Side side = (uniform_dist_(rng_) < 0.5) ? Side::Buy : Side::Sell;
-        Price price = side == Side::Buy
-                          ? buyPrices[i % buyPrices.size()]
-                          : sellPrices[i % sellPrices.size()];
+        Price price = side == Side::Buy ? buyPrices[i % buyPrices.size()] : sellPrices[i % sellPrices.size()];
 
         Order order;
         order.id = orderIdCounter_++;
@@ -62,7 +61,8 @@ std::vector<Order> OrderGenerator::generateFixedLevels(size_t count)
         order.quantity = 100;
         order.side = Side::Sell;
         order.type = OrderType::Limit;
-        order.timestamp = static_cast<Timestamp>(std::chrono::system_clock::now().time_since_epoch().count() + orders.size());
+        order.timestamp =
+            static_cast<Timestamp>(std::chrono::system_clock::now().time_since_epoch().count() + orders.size());
         orders.push_back(order);
     }
 
@@ -134,7 +134,7 @@ std::vector<Order> OrderGenerator::generateSparseExtreme(size_t count)
     orders.reserve(count);
 
     std::vector<Price> extremePrices = {
-        5000, 6000, 7000, 8000,    // Far below mid
+        5000,  6000,  7000,  8000, // Far below mid
         12000, 13000, 14000, 15000 // Far above mid
     };
 
@@ -198,7 +198,7 @@ std::vector<Order> OrderGenerator::generateHighCancellation(size_t count)
     orders.reserve(count);
 
     std::vector<Price> prices = {9995, 9996, 9997, 9998, 9999, 10001, 10002, 10003, 10004, 10005};
-    std::vector<OrderId> activeOrders; 
+    std::vector<OrderId> activeOrders;
 
     for (size_t i = 0; i < count; ++i)
     {
@@ -210,11 +210,13 @@ std::vector<Order> OrderGenerator::generateHighCancellation(size_t count)
 
             Order cancelOrder;
             cancelOrder.id = cancelId;
-            cancelOrder.quantity = 0;  // IMPORTANT: A quantity of 0 acts as a flag to the Benchmark runner that this is a Cancel Order
-            cancelOrder.price = 10000; 
+            cancelOrder.quantity =
+                0; // IMPORTANT: A quantity of 0 acts as a flag to the Benchmark runner that this is a Cancel Order
+            cancelOrder.price = 10000;
             cancelOrder.side = Side::Buy;
             cancelOrder.type = OrderType::Limit;
-            cancelOrder.timestamp = static_cast<Timestamp>(std::chrono::system_clock::now().time_since_epoch().count() + i);
+            cancelOrder.timestamp =
+                static_cast<Timestamp>(std::chrono::system_clock::now().time_since_epoch().count() + i);
 
             orders.push_back(cancelOrder);
         }
