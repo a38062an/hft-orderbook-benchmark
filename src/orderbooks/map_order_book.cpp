@@ -8,6 +8,11 @@ namespace hft
 // Uses a std::map for price levels (automatically sorted) and a std::list for time priority.
 void MapOrderBook::addOrder(const Order &order)
 {
+    if (orderLookup_.find(order.id) != orderLookup_.end())
+    {
+        return; // Reject duplicate OrderId
+    }
+
     if (order.side == Side::Buy)
     {
         auto &orderList = bids_[order.price];
@@ -82,7 +87,6 @@ void MapOrderBook::modifyOrder(OrderId orderId, Quantity newQuantity)
 std::vector<Trade> MapOrderBook::match()
 {
     std::vector<Trade> trades;
-    static uint64_t matchCounter{0};
 
     // Continue matching while there are overlapping prices
     while (!bids_.empty() && !asks_.empty())
@@ -109,16 +113,6 @@ std::vector<Trade> MapOrderBook::match()
             Quantity tradeQty = std::min(bidOrder.quantity, askOrder.quantity);
 
             trades.push_back({bidOrder.id, askOrder.id, askOrder.price, tradeQty});
-
-            matchCounter++;
-            if (matchCounter % 1000 == 0)
-            {
-                std::cout << "Match #" << matchCounter << ": "
-                          << "Bid=" << bidOrder.id << " "
-                          << "Ask=" << askOrder.id << " "
-                          << "Price=" << bestAskIterator->first << " "
-                          << "Qty=" << tradeQty << std::endl;
-            }
 
             bidOrder.quantity -= tradeQty;
             askOrder.quantity -= tradeQty;

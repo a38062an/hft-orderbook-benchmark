@@ -2,11 +2,16 @@
 #include "core/metrics_collector.hpp"
 #include "fix/fix_parser.hpp"
 #include "utils/rdtsc.hpp"
+#include <cerrno>
+#include <charconv>
 #include <cstdio>
+#include <cstring>
 #include <iostream>
 #include <netinet/in.h>
+#include <poll.h>
 #include <span>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <vector>
 
@@ -19,6 +24,32 @@
 
 namespace hft
 {
+
+namespace
+{
+bool sendAll(int socketFd, const char *data, size_t length)
+{
+    size_t sentBytes = 0;
+    while (sentBytes < length)
+    {
+        const ssize_t sentNow = send(socketFd, data + sentBytes, length - sentBytes, 0);
+        if (sentNow < 0)
+        {
+            if (errno == EINTR)
+            {
+                continue;
+            }
+            return false;
+        }
+        if (sentNow == 0)
+        {
+            return false;
+        }
+        sentBytes += static_cast<size_t>(sentNow);
+    }
+    return true;
+}
+} // namespace
 
 TCPOrderGateway::TCPOrderGateway(int port, LockFreeQueue<Order, 1024> &queue)
     : serverSocket_{-1}, port_{port}, orderQueue_{queue}, running_{false}
@@ -71,8 +102,8 @@ void TCPOrderGateway::stop()
     running_ = false;
     if (serverSocket_ >= 0)
     {
+        shutdown(serverSocket_, SHUT_RDWR);
         close(serverSocket_);
-        serverSocket_ = -1;
     }
     // Although using J:thread auto joins we call .join() for dterministic shutdown ordering
     if (acceptConnectionThread_.joinable())
@@ -86,17 +117,26 @@ void TCPOrderGateway::stop()
             clientThread.join();
         }
     }
+
+    serverSocket_ = -1;
 }
 
 void TCPOrderGateway::acceptLoop()
 {
     while (running_)
     {
-        // Block waiting for incoming client connections
+        pollfd pfd{serverSocket_, POLLIN, 0};
+        int pollResult = poll(&pfd, 1, 250);
+        if (pollResult <= 0)
+        {
+            continue;
+        }
+
+        // Accept incoming client connection
         int clientSocket = accept(serverSocket_, nullptr, nullptr);
         if (clientSocket < 0) // Error occured if less than 0
         {
-            if (running_)
+            if (running_ && errno != EINTR && errno != EAGAIN)
             {
                 std::cerr << "Accept failed" << std::endl;
             }
@@ -112,17 +152,49 @@ void TCPOrderGateway::acceptLoop()
 
 void TCPOrderGateway::clientHandler(int clientSocket)
 {
-    // 4KB buffer for incoming FIX messages
+    // Ensure blocking socket I/O wakes periodically so stop() cannot hang on idle/stalled clients.
+    timeval socketTimeout{};
+    socketTimeout.tv_sec = 0;
+    socketTimeout.tv_usec = 200000; // 200ms
+    setsockopt(clientSocket, SOL_SOCKET, SO_RCVTIMEO, &socketTimeout, sizeof(socketTimeout));
+    setsockopt(clientSocket, SOL_SOCKET, SO_SNDTIMEO, &socketTimeout, sizeof(socketTimeout));
+
+    // Start with 4KB, grow up to 1MB for fragmented or bursty payloads.
     std::vector<char> buffer(4096);
+    constexpr size_t kMaxBufferBytes = 1U << 20;
     size_t offset = 0; // Track partially received message data
 
     while (running_)
     {
-        // Read data from socket into buffer (non-blocking after initial data)
-        ssize_t bytesRead = recv(clientSocket, buffer.data() + offset, buffer.size() - offset, 0);
-        if (bytesRead <= 0)
+        if (offset == buffer.size())
         {
-            break; // Connection closed or error
+            if (buffer.size() >= kMaxBufferBytes)
+            {
+                // Drop unbounded malformed stream from this client.
+                break;
+            }
+
+            const size_t nextSize = std::min(buffer.size() * 2, kMaxBufferBytes);
+            buffer.resize(nextSize);
+        }
+
+        // Read data from socket into buffer.
+        ssize_t bytesRead = recv(clientSocket, buffer.data() + offset, buffer.size() - offset, 0);
+        if (bytesRead < 0)
+        {
+            if (errno == EINTR)
+            {
+                continue;
+            }
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                continue;
+            }
+            break; // Fatal read error
+        }
+        if (bytesRead == 0)
+        {
+            break; // Connection closed by peer
         }
 
         size_t totalBytes = offset + bytesRead;
@@ -140,19 +212,30 @@ void TCPOrderGateway::clientHandler(int clientSocket)
             // CLIENT REQUESTS STATS
             if (msgType == "U1")
             {
+                FIXParser::parse(data, consumed); // Advance consumed for complete/invalid U1 frame
+                if (consumed == 0)
+                {
+                    break; // Incomplete frame
+                }
+
                 // metrics_ set by main.cpp belonging to the matching engine
                 if (metrics_)
                 {
                     // Wait for processing to complete (Sync Benchmarking)
                     // Tag 596 in our custom U1 message = ExpectedCount
                     size_t expectedCount = 0;
-                    std::string dStr(data.data(), data.size());
-                    size_t pos = dStr.find("596=");
+                    const std::string_view frame(data.data(), consumed);
+                    auto expectedCountStr = FIXParser::getTagValue(frame, 596);
 
                     // Extract expected count from the FIX message
-                    if (pos != std::string::npos)
+                    if (!expectedCountStr.empty())
                     {
-                        expectedCount = std::stoull(dStr.substr(pos + 4, dStr.find('\x01', pos) - (pos + 4)));
+                        auto result = std::from_chars(expectedCountStr.data(),
+                                                      expectedCountStr.data() + expectedCountStr.size(), expectedCount);
+                        if (result.ec != std::errc{} || result.ptr != expectedCountStr.data() + expectedCountStr.size())
+                        {
+                            expectedCount = 0;
+                        }
                     }
 
                     // Wait until matching engine matches expected number of orders
@@ -181,9 +264,11 @@ void TCPOrderGateway::clientHandler(int clientSocket)
                                             stats.mean, (unsigned long long)stats.p99, (unsigned long long)stats.max,
                                             netStats.mean, queStats.mean, engStats.mean,
                                             (unsigned long long)metrics_->getOrderCount());
-                    send(clientSocket, statsData, len, 0);
+                    if (len <= 0 || !sendAll(clientSocket, statsData, static_cast<size_t>(len)))
+                    {
+                        break;
+                    }
                 }
-                FIXParser::parse(data, consumed); // Still call parse to advance consumed
             }
             // CLIENT SENDING REGULAR ORDER
             else

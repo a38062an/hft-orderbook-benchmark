@@ -5,9 +5,8 @@
 namespace hft
 {
 ArrayOrderBook::ArrayOrderBook(Price minPrice, Price maxPrice, Price tickSize)
-    : minPrice_(minPrice), maxPrice_(maxPrice), tickSize_(tickSize), numLevels_((maxPrice - minPrice) / tickSize + 1),
-      bidLevels_(numLevels_), askLevels_(numLevels_), activeBidLevels_(numLevels_, false),
-      activeAskLevels_(numLevels_, false), cachedBestBid_(0), cachedBestAsk_(std::numeric_limits<Price>::max())
+    : minPrice_(minPrice), maxPrice_(maxPrice), tickSize_(tickSize), numLevels_(0), bidLevels_(), askLevels_(),
+      activeBidLevels_(), activeAskLevels_(), cachedBestBid_(0), cachedBestAsk_(std::numeric_limits<Price>::max())
 {
     // Validate configuration
     if (minPrice >= maxPrice)
@@ -22,10 +21,21 @@ ArrayOrderBook::ArrayOrderBook(Price minPrice, Price maxPrice, Price tickSize)
     {
         throw std::invalid_argument("Price range must be evenly divisible by tickSize");
     }
+
+    numLevels_ = ((maxPrice_ - minPrice_) / tickSize_) + 1;
+    bidLevels_.resize(numLevels_);
+    askLevels_.resize(numLevels_);
+    activeBidLevels_.assign(numLevels_, false);
+    activeAskLevels_.assign(numLevels_, false);
 }
 
 void ArrayOrderBook::addOrder(const Order &order)
 {
+    if (orderLookup_.find(order.id) != orderLookup_.end())
+    {
+        return; // Reject duplicate OrderId
+    }
+
     // Validate price is within bounds and aligned to tick
     if (!isValidPrice(order.price))
     {
@@ -65,7 +75,7 @@ void ArrayOrderBook::addOrder(const Order &order)
         }
 
         // Store iterator in lookup
-        orderLookup_[order.id] = {true, indexToInsert, --orderList.end()};
+        orderLookup_[order.id] = {false, indexToInsert, --orderList.end()};
     }
 }
 
@@ -137,7 +147,6 @@ void ArrayOrderBook::modifyOrder(OrderId orderId, Quantity newQuantity)
 std::vector<Trade> ArrayOrderBook::match()
 {
     std::vector<Trade> trades;
-    static uint64_t matchCounter{0};
 
     while (cachedBestBid_ >= cachedBestAsk_)
     {
@@ -155,16 +164,6 @@ std::vector<Trade> ArrayOrderBook::match()
 
         // Create trade
         trades.push_back({bidOrder.id, askOrder.id, askOrder.price, tradeQty});
-
-        matchCounter++;
-        if (matchCounter % 1000 == 0)
-        {
-            std::cout << "Match #" << matchCounter << ": "
-                      << "Bid=" << bidOrder.id << " "
-                      << "Ask=" << askOrder.id << " "
-                      << "Price=" << askOrder.price << " "
-                      << "Qty=" << tradeQty << std::endl;
-        }
 
         // Update quantities
         bidOrder.quantity -= tradeQty;

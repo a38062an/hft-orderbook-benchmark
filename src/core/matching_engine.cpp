@@ -22,6 +22,12 @@ void MatchingEngine::run(std::atomic<bool> &running)
         // Optional: cpu_relax() or yield if we want to be nice,
         // but for HFT pinning we usually spin.
     }
+
+    // Drain any orders already enqueued before shutdown to avoid dropping work.
+    while (inputQueue_.pop(order))
+    {
+        processOrder(order);
+    }
 }
 
 void MatchingEngine::processOrder(const Order &order)

@@ -13,6 +13,11 @@ HybridOrderBook::HybridOrderBook(Index maxHotLevels) : maxHotLevels_(maxHotLevel
 // Decides hot vs cold based on proximity to spread (top N price levels).
 void HybridOrderBook::addOrder(const Order &order)
 {
+    if (orderLookup_.find(order.id) != orderLookup_.end())
+    {
+        return; // Reject duplicate OrderId
+    }
+
     if (order.side == Side::Buy)
     {
         // Check if price exists in hot path
@@ -131,17 +136,14 @@ void HybridOrderBook::cancelOrder(OrderId orderId)
                 std::lower_bound(hotBids_.begin(), hotBids_.end(), loc.price,
                                  [](const auto &priceLevel, Price price) { return priceLevel.first > price; });
 
-            if (levelIt != hotBids_.end() && levelIt->first == loc.price)
-            {
-                auto &orderList = levelIt->second;
-                orderList.erase(loc.iterator);
+            auto &orderList = levelIt->second;
+            orderList.erase(loc.iterator);
 
-                // Clean up empty price levels (O(K))
-                if (orderList.empty())
-                {
-                    hotBids_.erase(levelIt);
-                    // No index updates needed! :)
-                }
+            // Clean up empty price levels (O(K))
+            if (orderList.empty())
+            {
+                hotBids_.erase(levelIt);
+                // No index updates needed! :)
             }
         }
         else
@@ -150,16 +152,13 @@ void HybridOrderBook::cancelOrder(OrderId orderId)
                 std::lower_bound(hotAsks_.begin(), hotAsks_.end(), loc.price,
                                  [](const auto &priceLevel, Price price) { return priceLevel.first < price; });
 
-            if (levelIt != hotAsks_.end() && levelIt->first == loc.price)
-            {
-                auto &orderList = levelIt->second;
-                orderList.erase(loc.iterator);
+            auto &orderList = levelIt->second;
+            orderList.erase(loc.iterator);
 
-                if (orderList.empty())
-                {
-                    hotAsks_.erase(levelIt);
-                    // No index updates needed! :)
-                }
+            if (orderList.empty())
+            {
+                hotAsks_.erase(levelIt);
+                // No index updates needed! :)
             }
         }
     }
@@ -169,25 +168,19 @@ void HybridOrderBook::cancelOrder(OrderId orderId)
         if (loc.isBuy)
         {
             auto mapIt = coldBids_.find(loc.price);
-            if (mapIt != coldBids_.end())
+            mapIt->second.erase(loc.iterator);
+            if (mapIt->second.empty())
             {
-                mapIt->second.erase(loc.iterator);
-                if (mapIt->second.empty())
-                {
-                    coldBids_.erase(mapIt);
-                }
+                coldBids_.erase(mapIt);
             }
         }
         else
         {
             auto mapIt = coldAsks_.find(loc.price);
-            if (mapIt != coldAsks_.end())
+            mapIt->second.erase(loc.iterator);
+            if (mapIt->second.empty())
             {
-                mapIt->second.erase(loc.iterator);
-                if (mapIt->second.empty())
-                {
-                    coldAsks_.erase(mapIt);
-                }
+                coldAsks_.erase(mapIt);
             }
         }
     }
@@ -221,7 +214,6 @@ void HybridOrderBook::modifyOrder(OrderId orderId, Quantity newQuantity)
 std::vector<Trade> HybridOrderBook::match()
 {
     std::vector<Trade> trades;
-    static uint64_t matchCounter{0};
 
     while (true)
     {
@@ -281,16 +273,6 @@ std::vector<Trade> HybridOrderBook::match()
             Quantity tradeQty = std::min(bidOrder.quantity, askOrder.quantity);
 
             trades.push_back({bidOrder.id, askOrder.id, askOrder.price, tradeQty});
-
-            matchCounter++;
-            if (matchCounter % 1000 == 0)
-            {
-                std::cout << "Match #" << matchCounter << ": "
-                          << "Bid=" << bidOrder.id << " "
-                          << "Ask=" << askOrder.id << " "
-                          << "Price=" << bestAskPrice << " "
-                          << "Qty=" << tradeQty << std::endl;
-            }
 
             bidOrder.quantity -= tradeQty;
             askOrder.quantity -= tradeQty;
@@ -369,11 +351,8 @@ void HybridOrderBook::promoteToHot(Price price, bool isBuy)
 {
     if (isBuy)
     {
+        // Precondition: price comes from existing coldBids_ best level in match().
         auto coldIt = coldBids_.find(price);
-        if (coldIt == coldBids_.end())
-        {
-            return;
-        }
 
         // Make room if needed
         if (hotBids_.size() >= maxHotLevels_)
@@ -381,33 +360,23 @@ void HybridOrderBook::promoteToHot(Price price, bool isBuy)
             demoteFromHot(true);
         }
 
-        // Find insertion point in hot vector
-        auto hotIt = std::lower_bound(hotBids_.begin(), hotBids_.end(), price,
-                                      [](const auto &priceLevel, Price p) { return priceLevel.first > p; });
-
-        // Insert into hot
-        auto insertIt = hotBids_.insert(hotIt, {price, std::move(coldIt->second)});
+        // Called only from match() when hot side is empty; insertion at begin preserves ordering.
+        auto insertIt = hotBids_.insert(hotBids_.begin(), {price, std::move(coldIt->second)});
 
         // Update all orders at this price level in lookup
         for (auto &order : insertIt->second)
         {
             auto lookupIt = orderLookup_.find(order.id);
-            if (lookupIt != orderLookup_.end())
-            {
-                lookupIt->second.isHot = true;
-                lookupIt->second.price = price; // Ensure price is set
-            }
+            lookupIt->second.isHot = true;
+            lookupIt->second.price = price; // Ensure price is set
         }
 
         coldBids_.erase(coldIt);
     }
     else
     {
+        // Precondition: price comes from existing coldAsks_ best level in match().
         auto coldIt = coldAsks_.find(price);
-        if (coldIt == coldAsks_.end())
-        {
-            return;
-        }
 
         // Make room if needed
         if (hotAsks_.size() >= maxHotLevels_)
@@ -415,22 +384,15 @@ void HybridOrderBook::promoteToHot(Price price, bool isBuy)
             demoteFromHot(false);
         }
 
-        // Find insertion point in hot vector
-        auto hotIt = std::lower_bound(hotAsks_.begin(), hotAsks_.end(), price,
-                                      [](const auto &priceLevel, Price p) { return priceLevel.first < p; });
-
-        // Insert into hot
-        auto insertIt = hotAsks_.insert(hotIt, {price, std::move(coldIt->second)});
+        // Called only from match() when hot side is empty; insertion at begin preserves ordering.
+        auto insertIt = hotAsks_.insert(hotAsks_.begin(), {price, std::move(coldIt->second)});
 
         // Update all orders at this price level in lookup
         for (auto &order : insertIt->second)
         {
             auto lookupIt = orderLookup_.find(order.id);
-            if (lookupIt != orderLookup_.end())
-            {
-                lookupIt->second.isHot = true;
-                lookupIt->second.price = price; // Ensure price is set
-            }
+            lookupIt->second.isHot = true;
+            lookupIt->second.price = price; // Ensure price is set
         }
 
         coldAsks_.erase(coldIt);
@@ -457,11 +419,8 @@ void HybridOrderBook::demoteFromHot(bool isBuy)
         for (auto &order : coldBids_[worstPrice])
         {
             auto lookupIt = orderLookup_.find(order.id);
-            if (lookupIt != orderLookup_.end())
-            {
-                lookupIt->second.isHot = false;
-                lookupIt->second.price = worstPrice;
-            }
+            lookupIt->second.isHot = false;
+            lookupIt->second.price = worstPrice;
         }
 
         hotBids_.pop_back();
@@ -483,11 +442,8 @@ void HybridOrderBook::demoteFromHot(bool isBuy)
         for (auto &order : coldAsks_[worstPrice])
         {
             auto lookupIt = orderLookup_.find(order.id);
-            if (lookupIt != orderLookup_.end())
-            {
-                lookupIt->second.isHot = false;
-                lookupIt->second.price = worstPrice;
-            }
+            lookupIt->second.isHot = false;
+            lookupIt->second.price = worstPrice;
         }
 
         hotAsks_.pop_back();
@@ -499,37 +455,21 @@ void HybridOrderBook::addToHot(const Order &order, bool isBuy)
 {
     if (isBuy)
     {
+        // Caller guarantees this price level is not already present in hotBids_.
         auto it = std::lower_bound(hotBids_.begin(), hotBids_.end(), order.price,
                                    [](const auto &priceLevel, Price price) { return priceLevel.first > price; });
-
-        if (it != hotBids_.end() && it->first == order.price)
-        {
-            it->second.push_back(order);
-            orderLookup_[order.id] = {true, true, order.price, --it->second.end()};
-        }
-        else
-        {
-            auto insertIt = hotBids_.insert(it, {order.price, OrderList{}});
-            insertIt->second.push_back(order);
-            orderLookup_[order.id] = {true, true, order.price, --insertIt->second.end()};
-        }
+        auto insertIt = hotBids_.insert(it, {order.price, OrderList{}});
+        insertIt->second.push_back(order);
+        orderLookup_[order.id] = {true, true, order.price, --insertIt->second.end()};
     }
     else
     {
+        // Caller guarantees this price level is not already present in hotAsks_.
         auto it = std::lower_bound(hotAsks_.begin(), hotAsks_.end(), order.price,
                                    [](const auto &priceLevel, Price price) { return priceLevel.first < price; });
-
-        if (it != hotAsks_.end() && it->first == order.price)
-        {
-            it->second.push_back(order);
-            orderLookup_[order.id] = {false, true, order.price, --it->second.end()};
-        }
-        else
-        {
-            auto insertIt = hotAsks_.insert(it, {order.price, OrderList{}});
-            insertIt->second.push_back(order);
-            orderLookup_[order.id] = {false, true, order.price, --insertIt->second.end()};
-        }
+        auto insertIt = hotAsks_.insert(it, {order.price, OrderList{}});
+        insertIt->second.push_back(order);
+        orderLookup_[order.id] = {false, true, order.price, --insertIt->second.end()};
     }
 }
 

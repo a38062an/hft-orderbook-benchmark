@@ -1,12 +1,13 @@
-#include <iostream>
-#include <string>
-#include <vector>
-#include <random>
+#include <arpa/inet.h>
+#include <cerrno>
 #include <chrono>
 #include <cstring>
+#include <iostream>
+#include <random>
+#include <string>
 #include <sys/socket.h>
-#include <arpa/inet.h>
 #include <unistd.h>
+#include <vector>
 
 // Minimal FIX Message Construction
 // 8=FIX.4.2|9=LEN|35=D|11=ID|54=Side|38=Qty|44=Price|40=2|10=CS|
@@ -24,18 +25,20 @@ std::string create_fix_message(uint64_t id, int price, int quantity, int side)
 {
     char messageBody[256];
     // Construct the body of the FIX message
-    int bodyLength = std::snprintf(messageBody, sizeof(messageBody), "35=D\x01"
-                                                                     "11=%llu\x01"
-                                                                     "54=%d\x01"
-                                                                     "38=%d\x01"
-                                                                     "44=%d\x01"
-                                                                     "40=2\x01",
+    int bodyLength = std::snprintf(messageBody, sizeof(messageBody),
+                                   "35=D\x01"
+                                   "11=%llu\x01"
+                                   "54=%d\x01"
+                                   "38=%d\x01"
+                                   "44=%d\x01"
+                                   "40=2\x01",
                                    id, side, quantity, price);
 
     char messageHeader[256];
     // Construct the header, including the body length
-    int headerLength = std::snprintf(messageHeader, sizeof(messageHeader), "8=FIX.4.2\x01"
-                                                                           "9=%d\x01",
+    int headerLength = std::snprintf(messageHeader, sizeof(messageHeader),
+                                     "8=FIX.4.2\x01"
+                                     "9=%d\x01",
                                      bodyLength);
 
     std::string fixMessage;
@@ -160,8 +163,8 @@ int main(int argc, char *argv[])
     }
     if ((maxPrice - minPrice) % tickSize != 0)
     {
-        std::cerr << "Warning: price range (" << maxPrice - minPrice
-                  << ") is not evenly divisible by tick size (" << tickSize << ")\n";
+        std::cerr << "Warning: price range (" << maxPrice - minPrice << ") is not evenly divisible by tick size ("
+                  << tickSize << ")\n";
     }
 
     std::cout << "Configuration:\n"
@@ -194,7 +197,8 @@ int main(int argc, char *argv[])
     for (int i = 0; i < orderCount; ++i)
     {
         int price = validPrices[priceIndexDistribution(randomGenerator)];
-        orders.push_back(create_fix_message(i, price, quantityDistribution(randomGenerator), sideDistribution(randomGenerator)));
+        orders.push_back(
+            create_fix_message(i, price, quantityDistribution(randomGenerator), sideDistribution(randomGenerator)));
     }
 
     std::cout << "Connecting to " << serverHost << ":" << serverPort << "..." << std::endl;
@@ -214,18 +218,25 @@ int main(int argc, char *argv[])
     serverAddress.sin_family = AF_INET;
 
     // htons (Host TO Network Short): Converts the port number from host byte order (usually Little-Endian on x86/ARM)
-    // to network byte order (Big-Endian). This ensures the server reads the correct port number regardless of its CPU architecture.
+    // to network byte order (Big-Endian). This ensures the server reads the correct port number regardless of its CPU
+    // architecture.
     serverAddress.sin_port = htons(serverPort);
 
     // inet_pton (Presentation TO Network): Converts the IP address from a human-readable string (e.g., "127.0.0.1")
     // to its binary network representation.
-    inet_pton(AF_INET, serverHost.c_str(), &serverAddress.sin_addr);
+    if (inet_pton(AF_INET, serverHost.c_str(), &serverAddress.sin_addr) != 1)
+    {
+        std::cerr << "Invalid IPv4 host: " << serverHost << "\n";
+        close(clientSocket);
+        return 1;
+    }
 
     // Connect to server
     // Initiates the TCP 3-way handshake (SYN, SYN-ACK, ACK) to establish a connection with the server.
     if (connect(clientSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0)
     {
         perror("connect");
+        close(clientSocket);
         return 1;
     }
 
@@ -235,9 +246,29 @@ int main(int argc, char *argv[])
     // Send all orders
     for (const auto &fixMessage : orders)
     {
-        // send: Transmits the data over the connected socket.
-        // Returns the number of bytes actually sent. In a robust app, we should check if all bytes were sent.
-        send(clientSocket, fixMessage.data(), fixMessage.size(), 0);
+        size_t bytesSent = 0;
+        while (bytesSent < fixMessage.size())
+        {
+            // send can write fewer bytes than requested; loop until the full FIX frame is sent.
+            ssize_t sentNow = send(clientSocket, fixMessage.data() + bytesSent, fixMessage.size() - bytesSent, 0);
+            if (sentNow < 0)
+            {
+                if (errno == EINTR)
+                {
+                    continue;
+                }
+                perror("send");
+                close(clientSocket);
+                return 1;
+            }
+            if (sentNow == 0)
+            {
+                std::cerr << "send returned 0 bytes" << std::endl;
+                close(clientSocket);
+                return 1;
+            }
+            bytesSent += static_cast<size_t>(sentNow);
+        }
     }
 
     auto endTime = std::chrono::high_resolution_clock::now();

@@ -9,6 +9,11 @@ namespace hft
 // Uses a std::vector sorted by price, with std::list for time priority at each level.
 void VectorOrderBook::addOrder(const Order &order)
 {
+    if (orderLookup_.find(order.id) != orderLookup_.end())
+    {
+        return; // Reject duplicate OrderId
+    }
+
     if (order.side == Side::Buy)
     {
         // Binary search for price level (bids sorted high to low)
@@ -72,16 +77,14 @@ void VectorOrderBook::cancelOrder(OrderId orderId)
         auto levelIt = std::lower_bound(bids_.begin(), bids_.end(), price,
                                         [](const auto &priceLevel, Price p) { return priceLevel.first > p; });
 
-        if (levelIt != bids_.end() && levelIt->first == price)
-        {
-            auto &orderList = levelIt->second;
-            orderList.erase(orderLocation.iterator);
+        // `orderLookup_` stores canonical locations; level exists for a valid lookup entry.
+        auto &orderList = levelIt->second;
+        orderList.erase(orderLocation.iterator);
 
-            // Clean up empty price levels to keep vector size minimal
-            if (orderList.empty())
-            {
-                bids_.erase(levelIt);
-            }
+        // Clean up empty price levels to keep vector size minimal
+        if (orderList.empty())
+        {
+            bids_.erase(levelIt);
         }
     }
     else
@@ -90,16 +93,14 @@ void VectorOrderBook::cancelOrder(OrderId orderId)
         auto levelIt = std::lower_bound(asks_.begin(), asks_.end(), price,
                                         [](const auto &priceLevel, Price p) { return priceLevel.first < p; });
 
-        if (levelIt != asks_.end() && levelIt->first == price)
-        {
-            auto &orderList = levelIt->second;
-            orderList.erase(orderLocation.iterator);
+        // `orderLookup_` stores canonical locations; level exists for a valid lookup entry.
+        auto &orderList = levelIt->second;
+        orderList.erase(orderLocation.iterator);
 
-            // Clean up empty price levels
-            if (orderList.empty())
-            {
-                asks_.erase(levelIt);
-            }
+        // Clean up empty price levels
+        if (orderList.empty())
+        {
+            asks_.erase(levelIt);
         }
     }
 
@@ -130,7 +131,6 @@ void VectorOrderBook::modifyOrder(OrderId orderId, Quantity newQuantity)
 std::vector<Trade> VectorOrderBook::match()
 {
     std::vector<Trade> trades;
-    static uint64_t matchCounter{0};
 
     // Continue matching while there are overlapping prices
     while (!bids_.empty() && !asks_.empty())
@@ -156,16 +156,6 @@ std::vector<Trade> VectorOrderBook::match()
             Quantity tradeQty = std::min(bidOrder.quantity, askOrder.quantity);
 
             trades.push_back({bidOrder.id, askOrder.id, askOrder.price, tradeQty});
-
-            matchCounter++;
-            if (matchCounter % 1000 == 0)
-            {
-                std::cout << "Match #" << matchCounter << ": "
-                          << "Bid=" << bidOrder.id << " "
-                          << "Ask=" << askOrder.id << " "
-                          << "Price=" << bestAsk.first << " "
-                          << "Qty=" << tradeQty << std::endl;
-            }
 
             bidOrder.quantity -= tradeQty;
             askOrder.quantity -= tradeQty;

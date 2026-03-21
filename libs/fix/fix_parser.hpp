@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../src/core/order.hpp"
+#include <cctype>
 #include <charconv>
 #include <cstdio>
 #include <optional>
@@ -30,12 +31,28 @@ class FIXParser
             return std::nullopt; // Incomplete
         }
 
-        // Find the SOH after 10=XXX
-        size_t endOfMessagePosition = bufferView.find(SOH, checksumPosition + 1);
-        if (endOfMessagePosition == std::string_view::npos)
+        // Require full checksum field body (10=XXX<SOH>) before consuming a message.
+        // If the 3 checksum digits are not yet present, treat as incomplete.
+        if (bufferView.size() < checksumPosition + 8)
         {
             bytesConsumed = 0;
-            return std::nullopt; // Incomplete
+            return std::nullopt;
+        }
+
+        if (!std::isdigit(static_cast<unsigned char>(bufferView[checksumPosition + 4])) ||
+            !std::isdigit(static_cast<unsigned char>(bufferView[checksumPosition + 5])) ||
+            !std::isdigit(static_cast<unsigned char>(bufferView[checksumPosition + 6])))
+        {
+            bytesConsumed = checksumPosition + 8;
+            return std::nullopt; // Malformed checksum value in a complete frame
+        }
+
+        // Find the SOH after 10=XXX
+        size_t endOfMessagePosition = checksumPosition + 7;
+        if (bufferView[endOfMessagePosition] != SOH)
+        {
+            bytesConsumed = checksumPosition + 8;
+            return std::nullopt; // Malformed checksum terminator
         }
 
         bytesConsumed = endOfMessagePosition + 1;
@@ -47,7 +64,7 @@ class FIXParser
         {
             return std::nullopt; // Gateway will handle this separately
         }
-        
+
         if (msgType != "D") // NewOrderSingle
         {
             return std::nullopt; // Ignore non-order messages
@@ -57,38 +74,92 @@ class FIXParser
 
         // ClOrdID (11) -> OrderId
         auto clientOrderId = getTagValue(message, 11);
-        if (!clientOrderId.empty())
+        if (clientOrderId.empty())
         {
-            std::from_chars(clientOrderId.data(), clientOrderId.data() + clientOrderId.size(), order.id);
+            return std::nullopt;
+        }
+        auto idResult = std::from_chars(clientOrderId.data(), clientOrderId.data() + clientOrderId.size(), order.id);
+        if (idResult.ec != std::errc{} || idResult.ptr != clientOrderId.data() + clientOrderId.size())
+        {
+            return std::nullopt;
         }
 
         // Side (54): 1=Buy, 2=Sell
         auto side = getTagValue(message, 54);
-        order.side = (side == "1") ? Side::Buy : Side::Sell;
+        if (side == "1")
+        {
+            order.side = Side::Buy;
+        }
+        else if (side == "2")
+        {
+            order.side = Side::Sell;
+        }
+        else
+        {
+            return std::nullopt;
+        }
 
         // Price (44)
         auto price = getTagValue(message, 44);
         if (!price.empty())
         {
-            std::from_chars(price.data(), price.data() + price.size(), order.price);
+            auto priceResult = std::from_chars(price.data(), price.data() + price.size(), order.price);
+            if (priceResult.ec != std::errc{} || priceResult.ptr != price.data() + price.size())
+            {
+                return std::nullopt;
+            }
         }
 
         // OrderQty (38)
         auto quantityString = getTagValue(message, 38);
-        if (!quantityString.empty())
+        if (quantityString.empty())
         {
+            return std::nullopt;
+        }
+        auto quantityResult =
             std::from_chars(quantityString.data(), quantityString.data() + quantityString.size(), order.quantity);
+        if (quantityResult.ec != std::errc{} || quantityResult.ptr != quantityString.data() + quantityString.size())
+        {
+            return std::nullopt;
+        }
+        if (order.quantity == 0)
+        {
+            return std::nullopt;
         }
 
         // OrdType (40): 1=Market, 2=Limit
         auto type = getTagValue(message, 40);
-        order.type = (type == "1") ? OrderType::Market : OrderType::Limit;
+        if (type == "1")
+        {
+            order.type = OrderType::Market;
+        }
+        else if (type == "2")
+        {
+            order.type = OrderType::Limit;
+        }
+        else
+        {
+            return std::nullopt;
+        }
+
+        if (order.type == OrderType::Limit && price.empty())
+        {
+            return std::nullopt;
+        }
+        if (order.type == OrderType::Limit && order.price == 0)
+        {
+            return std::nullopt;
+        }
 
         // TransactionTime (60) -> sendTimestamp
         auto transTime = getTagValue(message, 60);
         if (!transTime.empty())
         {
-            std::from_chars(transTime.data(), transTime.data() + transTime.size(), order.sendTimestamp);
+            auto tsResult = std::from_chars(transTime.data(), transTime.data() + transTime.size(), order.sendTimestamp);
+            if (tsResult.ec != std::errc{} || tsResult.ptr != transTime.data() + transTime.size())
+            {
+                return std::nullopt;
+            }
         }
 
         return order;

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <mutex>
 #include <vector>
 
 namespace hft
@@ -29,6 +30,7 @@ class MetricsCollector
 
     void recordLatency(uint64_t cycles)
     {
+        std::lock_guard<std::mutex> lock(samplesMutex_);
         if (latencies_.size() < latencies_.capacity())
         {
             latencies_.push_back(cycles);
@@ -37,6 +39,7 @@ class MetricsCollector
 
     void recordNetworkLatency(uint64_t cycles)
     {
+        std::lock_guard<std::mutex> lock(samplesMutex_);
         if (networkLatencies_.size() < networkLatencies_.capacity())
         {
             networkLatencies_.push_back(cycles);
@@ -45,6 +48,7 @@ class MetricsCollector
 
     void recordEngineLatency(uint64_t cycles)
     {
+        std::lock_guard<std::mutex> lock(samplesMutex_);
         if (engineLatencies_.size() < engineLatencies_.capacity())
         {
             engineLatencies_.push_back(cycles);
@@ -53,6 +57,7 @@ class MetricsCollector
 
     void recordQueueLatency(uint64_t cycles)
     {
+        std::lock_guard<std::mutex> lock(samplesMutex_);
         if (queueLatencies_.size() < queueLatencies_.capacity())
         {
             queueLatencies_.push_back(cycles);
@@ -81,21 +86,25 @@ class MetricsCollector
 
     LatencyStats getStats() const
     {
+        std::lock_guard<std::mutex> lock(samplesMutex_);
         return calculateStats(latencies_);
     }
 
     LatencyStats getNetworkStats() const
     {
+        std::lock_guard<std::mutex> lock(samplesMutex_);
         return calculateStats(networkLatencies_);
     }
 
     LatencyStats getEngineStats() const
     {
+        std::lock_guard<std::mutex> lock(samplesMutex_);
         return calculateStats(engineLatencies_);
     }
 
     LatencyStats getQueueStats() const
     {
+        std::lock_guard<std::mutex> lock(samplesMutex_);
         return calculateStats(queueLatencies_);
     }
 
@@ -119,7 +128,10 @@ class MetricsCollector
         LatencyStats stats;
         stats.mean = sum / sorted.size();
         stats.max = sorted.back();
-        stats.p99 = sorted[static_cast<size_t>(sorted.size() * 0.99)];
+        const size_t n = sorted.size();
+        // Nearest-rank p99 index (0-based): ceil(0.99*n)-1, clamped.
+        const size_t p99Index = std::min(n - 1, ((99 * n + 99) / 100) - 1);
+        stats.p99 = sorted[p99Index];
         return stats;
     }
 
@@ -129,6 +141,7 @@ class MetricsCollector
     std::vector<uint64_t> networkLatencies_;
     std::vector<uint64_t> engineLatencies_;
     std::vector<uint64_t> queueLatencies_;
+    mutable std::mutex samplesMutex_;
 };
 
 } // namespace hft

@@ -22,6 +22,11 @@ PoolOrderBook::PoolOrderBook(Index maxOrders)
 
 void PoolOrderBook::addOrder(const Order &order)
 {
+    if (orderLookup_.find(order.id) != orderLookup_.end())
+    {
+        return; // Reject duplicate OrderId
+    }
+
     // O(1) allocation from pool
     Index indexToAllocate = allocateSlot();
     orders_[indexToAllocate].order = order;
@@ -69,6 +74,12 @@ void PoolOrderBook::modifyOrder(OrderId orderId, Quantity newQuantity)
         return;
     }
 
+    if (newQuantity == 0)
+    {
+        cancelOrder(orderId);
+        return;
+    }
+
     Index idx = it->second;
     orders_[idx].order.quantity = newQuantity;
 }
@@ -95,16 +106,17 @@ std::vector<Trade> PoolOrderBook::match()
         Index bidIdx = bidLevel.head;
         Index askIdx = askLevel.head;
 
-        // Iterate through orders at this price level until one side is exhausted.
-        while (bidIdx != NULL_IDX && askIdx != NULL_IDX)
+        // Iterate through orders at this price level.
+        while (true)
         {
+
             Order &bid = orders_[bidIdx].order;
             Order &ask = orders_[askIdx].order;
 
             // Determine trade size (minimum of the two order quantities).
             Quantity quantity = std::min(bid.quantity, ask.quantity);
 
-            trades.push_back({bid.id, ask.id, bid.price, quantity});
+            trades.push_back({bid.id, ask.id, ask.price, quantity});
 
             bid.quantity -= quantity;
             ask.quantity -= quantity;
@@ -178,10 +190,8 @@ template <typename MapType> void PoolOrderBook::appendToLevel(MapType &ladder, I
 template <typename MapType> void PoolOrderBook::removeFromLevel(MapType &ladder, Index idx)
 {
     Price price = orders_[idx].order.price;
+    // Precondition: idx refers to an order currently linked into ladder at this price.
     auto levelIt = ladder.find(price);
-
-    if (levelIt == ladder.end())
-        return;
 
     PoolLimitLevel &level = levelIt->second;
 

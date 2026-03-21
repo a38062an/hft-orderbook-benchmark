@@ -12,6 +12,32 @@ cmake ..
 make -j$(sysctl -n hw.ncpu)
 ```
 
+## Testing (GoogleTest + CTest)
+
+Correctness tests are separated from performance benchmarks.
+
+```bash
+cmake -S . -B build
+cmake --build build -j$(sysctl -n hw.ncpu)
+ctest --test-dir build --output-on-failure
+```
+
+### Coverage (LLVM on macOS)
+
+```bash
+cmake -S . -B build-coverage -DHFT_ENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
+cmake --build build-coverage -j$(sysctl -n hw.ncpu)
+cmake --build build-coverage --target coverage
+```
+
+HTML report:
+
+- `build-coverage/coverage/html/index.html`
+
+For dissertation methodology and evidence strategy, see `docs/testing/testing_strategy.md`.
+For the step-by-step branch-closure workflow used in this repo, see `docs/testing/branch_coverage_iterative_workflow.md`.
+For a first-time, practical explanation of GoogleTest + LLVM coverage (commands, metrics, validation, and troubleshooting), see `docs/testing/coverage_how_it_works.md`.
+
 ## Quick Start: Full Benchmark Sweep
 
 To perform a complete research sweep of all implementations and generate dissertation-ready plots plus analysis tables, run these commands in order:
