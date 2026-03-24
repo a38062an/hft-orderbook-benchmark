@@ -9,7 +9,7 @@ Requirements: CMake, C++17, Python 3.
 ```bash
 mkdir -p build && cd build
 cmake ..
-make -j$(sysctl -n hw.ncpu)
+make -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
 ```
 
 ## Testing (GoogleTest + CTest)
@@ -18,7 +18,7 @@ Correctness tests are separated from performance benchmarks.
 
 ```bash
 cmake -S . -B build
-cmake --build build -j$(sysctl -n hw.ncpu)
+cmake --build build -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
 ctest --test-dir build --output-on-failure
 ```
 
@@ -26,7 +26,7 @@ ctest --test-dir build --output-on-failure
 
 ```bash
 cmake -S . -B build-coverage -DHFT_ENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
-cmake --build build-coverage -j$(sysctl -n hw.ncpu)
+cmake --build build-coverage -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
 cmake --build build-coverage --target coverage
 ```
 
@@ -38,23 +38,151 @@ For dissertation methodology and evidence strategy, see `docs/testing/testing_st
 For the step-by-step branch-closure workflow used in this repo, see `docs/testing/branch_coverage_iterative_workflow.md`.
 For a first-time, practical explanation of GoogleTest + LLVM coverage (commands, metrics, validation, and troubleshooting), see `docs/testing/coverage_how_it_works.md`.
 
+## Recommended Environment Split (macOS + WSL2/Linux)
+
+This repository supports cross-platform development, but the measurement workflow is intentionally split:
+
+- macOS: correctness testing, unit/integration validation, and coverage workflow.
+- WSL2/Linux: benchmark runs that require thread pinning and Linux perf counters.
+
+Why this split exists:
+
+- Linux provides stable CPU affinity controls (`taskset`, `sched_setaffinity`) used by this benchmark workflow.
+- macOS can build and test the project, but strict thread pinning behavior is more restricted.
+- Linux perf events used by `run_direct_gateway_with_perf.sh` are Linux-specific.
+
+Plot generation (`python3 scripts/plot_benchmark.py results/results.csv`) can run on either environment. In this project, the canonical benchmark dataset and dissertation figures are produced from the Linux/WSL2 run artifacts.
+
 ## Quick Start: Full Benchmark Sweep
 
-To perform a complete research sweep of all implementations and generate dissertation-ready plots plus analysis tables, run these commands in order:
+To run the full benchmark suite with the current pinning policy:
+
+- **Direct mode**: pinned to one allowed CPU core.
+- **Gateway mode**: unpinned.
+- **MPSC mode**: optional, and pinned to one allowed CPU core when run via `--pin-core`.
+
+Use the integrated runner for Direct + Gateway + Linux perf in one command.
+
+### Capture Everything (Recommended)
+
+This command executes the full matrix in one shot:
+
+- Direct: all books x all scenarios
+- Gateway: all books x all scenarios
+- MPSC: all books x all scenarios x producers {1,2,4,8}
 
 ```bash
-# 1. Direct Mode Sweep (Pure Algorithm Latency)
-./build/benchmarks/orderbook_benchmark --mode direct --book all --scenario all --runs 5
+./scripts/run_direct_gateway_with_perf.sh --scenario all --runs 5 --orders 10000 --with-mpsc --mpsc-producers all
+```
 
-# 2. Gateway Mode Sweep (Full Systemic Latency + Queuing)
-./scripts/run_gateway_sweep.sh --scenario all --runs 5 --orders 10000
+### Fresh Results (Sequential Commands)
 
-# 3. MPSC Concurrency Sweep (Multi-Producer Exchange Simulation)
-./build/benchmarks/orderbook_benchmark --mode mpsc --book all --scenario mixed --producers all --orders 10000 --runs 5
+Run these in order when you want a brand-new dataset and fresh perf artifacts:
 
-# 4. Generate Organized Plots + Tables
+```bash
+# 1) Go to repo root
+cd /root/projects/hft-orderbook-benchmark
+
+# 2) Stop any leftover benchmark/server processes from interrupted runs
+pkill -f "run_gateway_sweep.sh|hft_exchange_server|orderbook_benchmark" >/dev/null 2>&1 || true
+
+# 3) Remove old aggregate and perf artifacts
+rm -f results/results.csv results/perf/direct_perf_*.txt results/perf/manifest.csv
+
+# 4) Run full matrix: direct + gateway + mpsc
+./scripts/run_direct_gateway_with_perf.sh --scenario all --runs 5 --orders 10000 --with-mpsc --mpsc-producers all
+
+# 5) Validate row counts
+awk -F, 'NR>1{m[$1]++} END{print "direct="m["direct"]", gateway="m["gateway"]", mpsc="m["mpsc"]", total="m["direct"]+m["gateway"]+m["mpsc"]}' results/results.csv
+
+# 6) Generate plots/tables
 python3 scripts/plot_benchmark.py results/results.csv
 ```
+
+Expected row counts after step 5: `direct=35`, `gateway=35`, `mpsc=140`, `total=210`.
+
+If you are on WSL and `/usr/bin/perf` is kernel-mismatch wrapped, the script auto-falls back to `/usr/lib/linux-tools-*/perf` when available.
+If perf is still unavailable, run without perf capture:
+
+```bash
+./scripts/run_direct_gateway_with_perf.sh --scenario all --runs 5 --orders 10000 --with-mpsc --mpsc-producers all --skip-perf
+```
+
+### Clean Run vs Append Run
+
+`results/results.csv` is key-upserted by the benchmark writer:
+
+- Direct/Gateway keys: `(mode, book, scenario)`
+- MPSC keys: `(mode, book, scenario, producerCount)`
+
+What this means:
+
+- Re-running the same key updates that row (it does not create duplicates).
+- New keys are appended.
+
+If you want a fully fresh dataset, delete the CSV first:
+
+```bash
+rm -f results/results.csv
+./scripts/run_direct_gateway_with_perf.sh --scenario all --runs 5 --orders 10000 --with-mpsc --mpsc-producers all
+```
+
+If you also want fresh perf artifacts for that run, clear perf outputs too:
+
+```bash
+rm -f results/results.csv results/perf/direct_perf_*.txt results/perf/manifest.csv
+./scripts/run_direct_gateway_with_perf.sh --scenario all --runs 5 --orders 10000 --with-mpsc --mpsc-producers all
+```
+
+After completion, generate plots:
+
+```bash
+python3 scripts/plot_benchmark.py results/results.csv
+```
+
+Quick validation after the full run:
+
+```bash
+awk -F, 'NR>1{m[$1]++} END{print "direct="m["direct"]", gateway="m["gateway"]", mpsc="m["mpsc"]", total="m["direct"]+m["gateway"]+m["mpsc"]}' results/results.csv
+```
+
+Expected counts for full matrix: `direct=35`, `gateway=35`, `mpsc=140`, `total=210`.
+
+### Minimal Direct + Gateway Run
+
+Use this when you only need direct vs gateway (no MPSC):
+
+```bash
+# 1. Direct (thread pinned) + Gateway (unpinned) + Linux perf recording
+./scripts/run_direct_gateway_with_perf.sh --scenario all --runs 5 --orders 10000
+
+# 2. Optional: MPSC Concurrency Sweep (single-core pinned)
+CORE=$(taskset -pc $$ | sed -E 's/.*: *//' | cut -d, -f1 | cut -d- -f1)
+taskset -c "$CORE" ./build/benchmarks/orderbook_benchmark --mode mpsc --book all --scenario mixed --producers all --orders 10000 --runs 5 --pin-core "$CORE"
+
+# 3. Generate Organized Plots + Tables
+python3 scripts/plot_benchmark.py results/results.csv
+```
+
+### What `manifest.csv` means
+
+`results/perf/manifest.csv` is a lightweight run ledger (a manifest) that tracks what was executed and where its artifacts were written.
+
+For each integrated run, it appends metadata like timestamp, scenario, run count, order count, chosen pin core, output CSV, and perf log path. This makes results reproducible and auditable.
+
+### Why MPSC is optional
+
+MPSC answers a different question from Direct/Gateway.
+
+- Direct/Gateway compare algorithmic latency and end-to-end system latency.
+- MPSC measures scaling behavior under concurrent producer load.
+
+So MPSC is marked optional in the quick-start path: include it when you need concurrency-scaling evidence, skip it when you only need Direct vs Gateway.
+
+The direct-mode perf counters and run metadata are recorded under `results/perf/`:
+
+- `results/perf/direct_perf_<timestamp>.txt`
+- `results/perf/manifest.csv`
 
 This will populate the `plots/` directory with organized subfolders (`direct/`, `gateway/`, `direct_vs_gateway/`, `mpsc/`, `scenario_validity/`, and `tables/`) for comparative analysis under varied market conditions.
 
@@ -93,7 +221,7 @@ Supports two latency measurement modes:
 # Gateway Mode (Automated)
 # This script automatically restarts the server for each book type
 # Pass 'all' to test every market scenario across every book
-./scripts/run_gateway_sweep.sh all
+./scripts/run_gateway_sweep.sh --scenario all --runs 5 --orders 10000
 
 # MPSC Mode (Multi-Producer Concurrency Sweep)
 # Simulates multiple concurrent gateway clients all pushing into one matching engine
@@ -143,12 +271,12 @@ For the purpose of this HFT benchmark, we use a subset of the FIX 4.2 protocol w
 ### Key Custom Tags
 
 - **Tag 60 (TransactionTime)**: Encodes the client's `sendTimestamp` in nanoseconds since Epoch. The Server uses this to calculate True End-to-End Latency.
-- **Tag 596 (SyncBarrier)**: Included in the `U1` message. It specifies the **Expected Order Count**. The server will "busy-wait" until the matching engine has processed exactly this many orders before replying. This prevents "cheating" where results are reported before the slow engine has finished draining the queue.
+- **Tag 596 (SyncBarrier)**: Included in the `U1` message. It specifies the **Expected Order Count**. The server waits until the matching engine reaches this count, with a bounded timeout to avoid indefinite blocking. This prevents reporting results before the engine has had a chance to drain queued work.
 
 ### Example Stats Flow
 
 1. **Client Sends**: `8=FIX.4.2|35=U1|596=10000|10=000|` (I sent 10k orders, wait until they are all done).
-2. **Server Logic**: `while(processed < 10000) { yield(); }`
+2. **Server Logic**: `while(processed < expected && elapsed < timeout) { yield(); }`
 3. **Server Replies**: `8=FIX.4.2|35=U2|Mean=176.50|Count=10000|...|`
 
 ---
@@ -204,4 +332,16 @@ Generates charts in `plots/`:
 
 ### Platform Notes
 
-On macOS, thread pinning is restricted. Warnings are expected and do not prevent execution. Full pinning is supported on Linux.
+- macOS is fully supported for building, testing, and coverage collection.
+- Linux/WSL2 is recommended for performance experiments that rely on explicit core pinning and perf counters.
+- On WSL2, if `/usr/bin/perf` is a kernel-mismatch wrapper, use the integrated script fallback or install matching linux-tools.
+
+### Cross-Architecture Comparability (Important)
+
+Architecture and platform differences matter for absolute latency/throughput values.
+
+- Do compare implementations within the same machine/OS/kernel configuration.
+- Do use relative metrics (rankings, slowdown vs best, variance trends) when discussing portability of conclusions.
+- Do not directly compare absolute ns-level values across different architectures (for example ARM64 vs x86_64) or different OS scheduler stacks.
+
+For dissertation-quality reporting, always publish environment metadata with results (CPU model, core/thread count, cache sizes, OS/kernel version, and whether runs were pinned/unpinned).

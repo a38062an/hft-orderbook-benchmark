@@ -2,10 +2,10 @@
 
 # Create a library for the core components
 add_library(hft_core
-    core/order.hpp
-    core/trade.hpp
+    core/Order.hpp
+    core/Trade.hpp
     core/i_order_book.hpp
-    core/types.hpp
+    core/Types.hpp
     core/matching_engine.cpp
     core/matching_engine.hpp
     core/metrics_collector.hpp

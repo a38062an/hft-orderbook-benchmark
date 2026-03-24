@@ -1,13 +1,16 @@
 #pragma once
 
-#include "core/order.hpp"
+#include "core/Order.hpp"
 #include "utils/rdtsc.hpp"
 #include <arpa/inet.h>
+#include <cerrno>
+#include <cstdio>
 #include <netinet/in.h>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 namespace hft
@@ -39,6 +42,13 @@ class MockClient
         if (::connect(sock_, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
             return false;
 
+        // Prevent indefinite blocking when waiting for server responses.
+        timeval socketTimeout{};
+        socketTimeout.tv_sec = 5;
+        socketTimeout.tv_usec = 0;
+        setsockopt(sock_, SOL_SOCKET, SO_RCVTIMEO, &socketTimeout, sizeof(socketTimeout));
+        setsockopt(sock_, SOL_SOCKET, SO_SNDTIMEO, &socketTimeout, sizeof(socketTimeout));
+
         return true;
     }
 
@@ -51,10 +61,10 @@ class MockClient
         }
     }
 
-    void sendOrder(const Order &order)
+    bool sendOrder(const Order &order)
     {
         std::string fix = toFIX(order);
-        send(sock_, fix.c_str(), fix.length(), 0);
+        return sendAll(fix.data(), fix.size());
     }
 
     struct ServerStats
@@ -77,7 +87,7 @@ class MockClient
                                    "596=%zu\x01"
                                    "10=000\x01",
                                    expectedCount);
-        if (send(sock_, reqBuf, reqLen, 0) < 0)
+        if (reqLen <= 0 || !sendAll(reqBuf, static_cast<size_t>(reqLen)))
         {
             return std::nullopt;
         }
@@ -154,6 +164,29 @@ class MockClient
     }
 
   private:
+    bool sendAll(const char *data, size_t length)
+    {
+        size_t sentBytes = 0;
+        while (sentBytes < length)
+        {
+            ssize_t sentNow = send(sock_, data + sentBytes, length - sentBytes, 0);
+            if (sentNow < 0)
+            {
+                if (errno == EINTR)
+                {
+                    continue;
+                }
+                return false;
+            }
+            if (sentNow == 0)
+            {
+                return false;
+            }
+            sentBytes += static_cast<size_t>(sentNow);
+        }
+        return true;
+    }
+
     std::string toFIX(const Order &order)
     {
         // Simple FIX 4.2 NewOrderSingle (D)

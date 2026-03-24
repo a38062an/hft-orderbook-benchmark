@@ -1,6 +1,9 @@
 #pragma once
 
+#include <cerrno>
+#include <cstring>
 #include <iostream>
+#include <sstream>
 
 #if defined(__linux__)
 #include <pthread.h>
@@ -12,6 +15,49 @@
 
 namespace hft
 {
+#if defined(__linux__)
+inline std::string formatAllowedCpus(const cpu_set_t &set)
+{
+    std::ostringstream oss;
+    bool first_range = true;
+    int range_start = -1;
+
+    for (int cpu = 0; cpu <= CPU_SETSIZE; ++cpu)
+    {
+        const bool in_set = (cpu < CPU_SETSIZE) && CPU_ISSET(cpu, &set);
+        if (in_set && range_start == -1)
+        {
+            range_start = cpu;
+        }
+        else if (!in_set && range_start != -1)
+        {
+            const int range_end = cpu - 1;
+            if (!first_range)
+            {
+                oss << ",";
+            }
+            if (range_start == range_end)
+            {
+                oss << range_start;
+            }
+            else
+            {
+                oss << range_start << "-" << range_end;
+            }
+            first_range = false;
+            range_start = -1;
+        }
+    }
+
+    if (first_range)
+    {
+        return "<none>";
+    }
+
+    return oss.str();
+}
+#endif
+
 /**
  * @brief Pin the current thread to a specific CPU core
  * @param core_id The core ID to pin to (0 to N-1)
@@ -20,14 +66,30 @@ namespace hft
 inline bool pinToCore(int core_id)
 {
 #if defined(__linux__)
+    cpu_set_t allowed_set;
+    CPU_ZERO(&allowed_set);
+    if (sched_getaffinity(0, sizeof(cpu_set_t), &allowed_set) != 0)
+    {
+        std::cerr << "Error: Failed to read allowed CPU mask: " << std::strerror(errno) << std::endl;
+        return false;
+    }
+
+    if (core_id < 0 || core_id >= CPU_SETSIZE || !CPU_ISSET(core_id, &allowed_set))
+    {
+        std::cerr << "Error: Requested core " << core_id
+                  << " is not allowed for this process. Allowed cores: " << formatAllowedCpus(allowed_set) << std::endl;
+        return false;
+    }
+
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     CPU_SET(core_id, &cpuset);
 
     pthread_t current_thread = pthread_self();
-    if (pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset) != 0)
+    const int ret = pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+    if (ret != 0)
     {
-        std::cerr << "Error: Failed to pin thread to core " << core_id << std::endl;
+        std::cerr << "Error: Failed to pin thread to core " << core_id << ": " << std::strerror(ret) << std::endl;
         return false;
     }
     return true;

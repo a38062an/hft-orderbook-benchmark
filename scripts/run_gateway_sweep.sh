@@ -1,10 +1,13 @@
 #!/bin/bash
+set -u
+set -o pipefail
 
 # Configuration
 SERVER_BIN="./build/src/hft_exchange_server"
 CLIENT_BIN="./build/benchmarks/orderbook_benchmark"
 CSV_OUT="results/results.csv"
 PORT=12345
+MAX_ATTEMPTS=2
 # Usage: ./scripts/run_gateway_sweep.sh [scenario|all] [runs] [orders]
 # Example: ./scripts/run_gateway_sweep.sh all 5 10000
 
@@ -12,6 +15,7 @@ PORT=12345
 SCENARIO="mixed"
 RUNS=3
 ORDERS=10000
+BOOKS=""
 
 # Parse Arguments
 while [[ $# -gt 0 ]]; do
@@ -37,6 +41,18 @@ done
 
 # Ensure results directory exists
 mkdir -p results
+
+has_gateway_row() {
+    local csv_file="$1"
+    local book="$2"
+    local scenario="$3"
+
+    if [[ ! -f "$csv_file" ]]; then
+        return 1
+    fi
+
+    awk -F, -v b="$book" -v s="$scenario" 'NR>1 && $1=="gateway" && $2==b && $3==s {found=1} END{exit(found?0:1)}' "$csv_file"
+}
 
 # Clean previous results if desired (optional)
 # rm $CSV_OUT
@@ -64,6 +80,7 @@ SCENARIOS_ARRAY=($SCENARIOS)
 
 echo "Starting Full HFT Gateway Comparison..."
 echo "========================================"
+echo "Pinning: disabled for gateway sweep"
 
 for CUR_SCENARIO in "${SCENARIOS_ARRAY[@]}"
 do
@@ -73,21 +90,43 @@ do
     for BOOK in "${BOOKS_ARRAY[@]}"
     do
         echo "  - Testing Implementation: $BOOK"
-        
-        # 1. Start Server in background
-        $SERVER_BIN --book $BOOK --port $PORT > /dev/null 2>&1 &
-        SERVER_PID=$!
-        
-        # 2. Wait for server to initialize
-        sleep 1
-        
-        # 3. Run Client Benchmark (Specific scenario, not 'all')
-        $CLIENT_BIN --mode gateway --book $BOOK --port $PORT --runs $RUNS --orders $ORDERS --scenario $CUR_SCENARIO --csv_out $CSV_OUT
-        
-        # 4. Shutdown Server
-        kill -INT $SERVER_PID
-        
-        # 5. Wait for clean cleanup
+
+        success=0
+        for ATTEMPT in $(seq 1 "$MAX_ATTEMPTS")
+        do
+            echo "    Attempt $ATTEMPT/$MAX_ATTEMPTS"
+
+            # 1. Start Server in background
+            $SERVER_BIN --book "$BOOK" --port "$PORT" > /dev/null 2>&1 &
+            SERVER_PID=$!
+
+            # 2. Wait for server to initialize
+            sleep 1
+
+            # 3. Run Client Benchmark (Specific scenario, not 'all')
+            $CLIENT_BIN --mode gateway --book "$BOOK" --port "$PORT" --runs "$RUNS" --orders "$ORDERS" --scenario "$CUR_SCENARIO" --csv_out "$CSV_OUT"
+            CLIENT_EXIT=$?
+
+            # 4. Shutdown Server (best effort)
+            kill -INT "$SERVER_PID" >/dev/null 2>&1 || true
+            wait "$SERVER_PID" >/dev/null 2>&1 || true
+
+            # 5. Validate this specific row exists in CSV
+            if [[ "$CLIENT_EXIT" -eq 0 ]] && has_gateway_row "$CSV_OUT" "$BOOK" "$CUR_SCENARIO"; then
+                success=1
+                break
+            fi
+
+            echo "    Warning: gateway case missing/failed for book=$BOOK scenario=$CUR_SCENARIO (exit=$CLIENT_EXIT)"
+            sleep 1
+        done
+
+        if [[ "$success" -ne 1 ]]; then
+            echo "Error: gateway case failed after $MAX_ATTEMPTS attempts: book=$BOOK scenario=$CUR_SCENARIO"
+            exit 1
+        fi
+
+        # Small gap between cases for port reuse
         sleep 1
     done
     echo "----------------------------------------"

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "order.hpp"
-#include "trade.hpp"
+#include "Order.hpp"
+#include "Trade.hpp"
 #include <limits>
 #include <vector>
 

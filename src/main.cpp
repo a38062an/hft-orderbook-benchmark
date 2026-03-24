@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
     signal(SIGINT, signalHandler);
 
     int port = 12345;
+    int pinCore = -1;
     std::string bookType = "map";
     std::string csvOut = "";
 
@@ -41,6 +42,10 @@ int main(int argc, char *argv[])
         else if (arg == "--book" && i + 1 < argc)
         {
             bookType = argv[++i];
+        }
+        else if (arg == "--pin-core" && i + 1 < argc)
+        {
+            pinCore = std::stoi(argv[++i]);
         }
         else if (arg == "--csv_out" && i + 1 < argc)
         {
@@ -57,7 +62,7 @@ int main(int argc, char *argv[])
         LockFreeQueue<Order, 1024> orderQueue;
         TCPOrderGateway gateway(port, orderQueue);
         MatchingEngine engine(orderQueue, *orderBook);
-        
+
         // Link metrics to gateway so it can report stats to clients
         gateway.setMetricsCollector(&engine.getMetrics());
 
@@ -66,13 +71,20 @@ int main(int argc, char *argv[])
         gateway.start();
 
         // Start Matching Engine Loop
-        if (hft::pinToCore(0))
+        if (pinCore >= 0)
         {
-            std::cout << "Matching Engine thread pinned to core 0." << std::endl;
+            if (hft::pinToCore(pinCore))
+            {
+                std::cout << "Matching Engine thread pinned to core " << pinCore << "." << std::endl;
+            }
+            else
+            {
+                std::cerr << "Warning: Failed to pin thread to core " << pinCore << "." << std::endl;
+            }
         }
         else
         {
-            std::cerr << "Warning: Failed to pin thread to core 0." << std::endl;
+            std::cout << "Matching Engine thread pinning disabled." << std::endl;
         }
         std::cout << "Starting Matching Engine Loop..." << std::endl;
         engine.run(isApplicationRunning);
@@ -101,7 +113,8 @@ int main(int argc, char *argv[])
             {
                 outFile << "Mode,Book,Mean_ticks,P99_ticks,Max_ticks,Processed\n";
             }
-            outFile << "server_wire_to_match," << bookType << "," << stats.mean << "," << stats.p99 << "," << stats.max << "," << engine.getMetrics().getOrderCount() << "\n";
+            outFile << "server_wire_to_match," << bookType << "," << stats.mean << "," << stats.p99 << "," << stats.max
+                    << "," << engine.getMetrics().getOrderCount() << "\n";
         }
     }
     catch (const std::exception &e)

@@ -4,6 +4,7 @@
 #include "utils/rdtsc.hpp"
 #include <cerrno>
 #include <charconv>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
@@ -17,8 +18,8 @@
 
 /**
  *
- * Each client sends there order through TCP and get there own buffer and therad from the exchange
- * The buffer is large and track incremently by seeing what has been processed
+ * Each client sends orders through TCP and gets a dedicated buffer and thread in the exchange.
+ * The receive buffer grows as needed and tracks how much has already been processed.
  *
  */
 
@@ -238,9 +239,16 @@ void TCPOrderGateway::clientHandler(int clientSocket)
                         }
                     }
 
-                    // Wait until matching engine matches expected number of orders
+                    // Wait until matching engine reaches expected order count, but never block forever.
+                    const auto waitStart = std::chrono::steady_clock::now();
                     while (metrics_->getOrderCount() < expectedCount && running_)
                     {
+                        if (std::chrono::steady_clock::now() - waitStart > std::chrono::seconds(30))
+                        {
+                            std::cerr << "Warning: Stats barrier timeout. expected=" << expectedCount
+                                      << " observed=" << metrics_->getOrderCount() << "\n";
+                            break;
+                        }
                         std::this_thread::yield();
                     }
 

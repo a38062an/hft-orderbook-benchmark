@@ -1,5 +1,6 @@
 #include "pool_order_book.hpp"
 #include <algorithm>
+#include <stdexcept>
 
 namespace hft
 {

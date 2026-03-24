@@ -60,7 +60,7 @@ Recommended dissertation reporting:
 
 ```bash
 cmake -S . -B build
-cmake --build build -j$(sysctl -n hw.ncpu)
+cmake --build build -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
 ctest --test-dir build --output-on-failure
 ```
 
@@ -68,7 +68,7 @@ ctest --test-dir build --output-on-failure
 
 ```bash
 cmake -S . -B build-coverage -DHFT_ENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
-cmake --build build-coverage -j$(sysctl -n hw.ncpu)
+cmake --build build-coverage -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
 cmake --build build-coverage --target coverage
 ```
 

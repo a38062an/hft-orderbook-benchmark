@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../src/core/order.hpp"
+#include "core/Order.hpp"
 #include <cctype>
 #include <charconv>
 #include <cstdio>

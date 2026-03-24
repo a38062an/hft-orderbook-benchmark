@@ -2,8 +2,8 @@
 
 #include <random>
 
-#include "core/order.hpp"
-#include "core/types.hpp"
+#include "core/Order.hpp"
+#include "core/Types.hpp"
 
 namespace hft
 {
@@ -29,7 +29,8 @@ class OrderGenerator
 
     static std::vector<std::string> getSupportedScenarios()
     {
-        return {"tight_spread", "fixed_levels", "dense_full", "sparse_extreme", "worst_case_fifo", "mixed", "high_cancellation"};
+        return {"tight_spread",    "fixed_levels", "dense_full",       "sparse_extreme",
+                "worst_case_fifo", "mixed",        "high_cancellation"};
     }
 
     std::vector<Order> generateScenario(const std::string &scenario, size_t count)

@@ -5,7 +5,7 @@ This repository now uses an iterative loop to raise branch coverage with evidenc
 ## 1) Build + run + collect baseline
 
 ```bash
-cmake --build build-coverage -j$(sysctl -n hw.ncpu)
+cmake --build build-coverage -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
 ctest --test-dir build-coverage --output-on-failure
 cmake --build build-coverage --target coverage
 ```
@@ -50,7 +50,7 @@ Rule of thumb:
 After each batch of tests:
 
 ```bash
-cmake --build build-coverage -j$(sysctl -n hw.ncpu)
+cmake --build build-coverage -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
 ctest --test-dir build-coverage --output-on-failure
 cmake --build build-coverage --target coverage
 ```
