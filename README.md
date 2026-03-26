@@ -16,10 +16,20 @@ make -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
 
 Correctness tests are separated from performance benchmarks.
 
+Portable default: run unit tests first (`-L unit`).
+
 ```bash
 cmake -S . -B build
 cmake --build build -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
-ctest --test-dir build --output-on-failure
+ctest --test-dir build -L unit --output-on-failure
+```
+
+TCP integration path is opt-in:
+
+```bash
+cmake -S . -B build -DHFT_ENABLE_INTEGRATION_TESTS=ON
+cmake --build build -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
+ctest --test-dir build -L integration --output-on-failure
 ```
 
 ### Coverage (LLVM on macOS)
@@ -37,11 +47,13 @@ HTML report:
 For dissertation methodology and evidence strategy, see `docs/testing/testing_strategy.md`.
 For the step-by-step branch-closure workflow used in this repo, see `docs/testing/branch_coverage_iterative_workflow.md`.
 For a first-time, practical explanation of GoogleTest + LLVM coverage (commands, metrics, validation, and troubleshooting), see `docs/testing/coverage_how_it_works.md`.
+For users implementing a new orderbook (template, factory registration, correctness/perf validation), see `docs/user_manual_orderbook_developer.md`.
 
 ## Recommended Environment Split (macOS + WSL2/Linux)
 
 This repository supports cross-platform development, but the measurement workflow is intentionally split:
 
+- Development baseline for this project has been macOS for correctness and coverage iteration.
 - macOS: correctness testing, unit/integration validation, and coverage workflow.
 - WSL2/Linux: benchmark runs that require thread pinning and Linux perf counters.
 
@@ -50,6 +62,7 @@ Why this split exists:
 - Linux provides stable CPU affinity controls (`taskset`, `sched_setaffinity`) used by this benchmark workflow.
 - macOS can build and test the project, but strict thread pinning behavior is more restricted.
 - Linux perf events used by `run_direct_gateway_with_perf.sh` are Linux-specific.
+- **Gateway-mode latency decomposition (network/queue/engine) is measured via Linux TCP stack parameters and may not generalize to macOS or Windows.**
 
 Plot generation (`python3 scripts/plot_benchmark.py results/results.csv`) can run on either environment. In this project, the canonical benchmark dataset and dissertation figures are produced from the Linux/WSL2 run artifacts.
 
@@ -74,6 +87,25 @@ Expected success signals:
 - benchmark prints a summary table with a `direct` row for `array/mixed`
 - `results/results.csv` is created or updated
 - plot files are generated under `plots/`
+
+## Server Binary
+
+The repository includes an HFT exchange server that accepts orders via TCP:
+
+```bash
+# See supported order book types
+./build/src/hft_exchange_server --list_books
+
+# Start server with specific order book (default: map)
+./build/src/hft_exchange_server --book array --port 12345
+
+# Show all server options
+./build/src/hft_exchange_server --help
+```
+
+The server listens on TCP and matches orders using the selected order book structure. See `src/main.cpp` and client examples in `clients/` for protocol details.
+
+If your build places executables in `build/bin/`, replace `build/src/` with `build/bin/` in the commands above.
 
 ## Quick Start: Full Benchmark Sweep
 
@@ -135,7 +167,7 @@ If perf is still unavailable, run without perf capture:
 `results/results.csv` is key-upserted by the benchmark writer:
 
 - Direct/Gateway keys: `(mode, book, scenario)`
-- MPSC keys: `(mode, book, scenario, producerCount)`
+- MPSC keys: `(mode, book, scenario, Producers)`
 
 What this means:
 
@@ -200,6 +232,29 @@ MPSC answers a different question from Direct/Gateway.
 - MPSC measures scaling behavior under concurrent producer load.
 
 So MPSC is marked optional in the quick-start path: include it when you need concurrency-scaling evidence, skip it when you only need Direct vs Gateway.
+
+### Results CSV Format
+
+`results/results.csv` contains all benchmark measurements and is used for plot generation. Common columns:
+
+| Column | Type | Example | Notes |
+|--------|------|---------|-------|
+| `Mode` | string | `direct` \| `gateway` \| `mpsc` | Benchmark mode |
+| `Book` | string | `array` \| `map` \| `vector` \| ... | Order book implementation |
+| `Scenario` | string | `mixed` \| `dense_full` \| ... | Market condition workload |
+| `Latency_ns` | float | 210.72 | Mean latency for the row mode |
+| `LatencyStdDev_ns` | float | 12.34 | Latency standard deviation across runs |
+| `P99_ns` | float | 245.89 | 99th percentile latency |
+| `P99StdDev_ns` | float | 8.12 | P99 standard deviation across runs |
+| `Max_ns` | float | 298.34 | Maximum latency observed |
+| `Network_ns` | float | 2,159,070.98 | Network component (gateway only) |
+| `Queue_ns` | float | 565,998.96 | Queue wait component (gateway only) |
+| `Engine_ns` | float | 920.43 | Engine processing component (gateway only) |
+| `Producers` | int | 1, 2, 4, 8 | Producer count (MPSC only; 0 otherwise) |
+
+Load in Python: `import pandas as pd; df = pd.read_csv('results/results.csv')`
+
+For full column list, run: `head -1 results/results.csv`
 
 The direct-mode perf counters and run metadata are recorded under `results/perf/`:
 
@@ -268,7 +323,7 @@ Unlike the SPSC-based Gateway mode (one client, one TCP stream), MPSC spawns **N
 | `Eng(ns)` | Matching engine time (`addOrder + match`). Should stay **flat** as producers increase — proves engine isolation. |
 | `Net(ns)` | Repurposed to display the **producer count** for that row |
 | `Throughput` | Total orders/sec across all producers combined |
-| `Match(ns)` | Dropped order count (should be 0; queue capacity is 16,384 entries) |
+| `Match/Drop` | Dropped order count (should be 0; queue capacity is 16,384 entries) |
 
 **Template Note**: `src/orderbooks/template_order_book.hpp` is intentionally a teaching scaffold with TODOs. It is provided to explain how to incorporate a new order book implementation and should not be used as a benchmark target until fully implemented.
 

@@ -2,7 +2,6 @@
 
 #include "../core/i_order_book.hpp"
 #include <cstdint>
-#include <cstring>
 #include <map>
 #include <unordered_map>
 #include <vector>

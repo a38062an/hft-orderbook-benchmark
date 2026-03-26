@@ -7,7 +7,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(CTest)
 
-option(HFT_ENABLE_INTEGRATION_TESTS "Build integration tests" ON)
+option(HFT_ENABLE_INTEGRATION_TESTS "Build integration tests (TCP/socket path)" OFF)
 option(HFT_ENABLE_COVERAGE "Enable compiler coverage instrumentation" OFF)
 
 if(HFT_ENABLE_COVERAGE)

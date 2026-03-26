@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <cerrno>
 #include <chrono>
+#include <cinttypes>
 #include <cstring>
 #include <iostream>
 #include <random>
@@ -27,7 +28,7 @@ std::string create_fix_message(uint64_t id, int price, int quantity, int side)
     // Construct the body of the FIX message
     int bodyLength = std::snprintf(messageBody, sizeof(messageBody),
                                    "35=D\x01"
-                                   "11=%llu\x01"
+                                   "11=%" PRIu64 "\x01"
                                    "54=%d\x01"
                                    "38=%d\x01"
                                    "44=%d\x01"

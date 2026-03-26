@@ -42,6 +42,21 @@ done
 # Ensure results directory exists
 mkdir -p results
 
+# Resolve server binary path across common CMake layouts.
+if [[ ! -x "$SERVER_BIN" && -x "./build/bin/hft_exchange_server" ]]; then
+    SERVER_BIN="./build/bin/hft_exchange_server"
+fi
+
+if [[ ! -x "$SERVER_BIN" ]]; then
+    echo "Error: server binary not found or not executable: ./build/src/hft_exchange_server (or ./build/bin/hft_exchange_server)"
+    exit 1
+fi
+
+if [[ ! -x "$CLIENT_BIN" ]]; then
+    echo "Error: benchmark binary not found or not executable: $CLIENT_BIN"
+    exit 1
+fi
+
 has_gateway_row() {
     local csv_file="$1"
     local book="$2"
@@ -102,6 +117,12 @@ do
 
             # 2. Wait for server to initialize
             sleep 1
+
+            if ! kill -0 "$SERVER_PID" >/dev/null 2>&1; then
+                echo "    Warning: server failed to start for book=$BOOK scenario=$CUR_SCENARIO"
+                wait "$SERVER_PID" >/dev/null 2>&1 || true
+                continue
+            fi
 
             # 3. Run Client Benchmark (Specific scenario, not 'all')
             $CLIENT_BIN --mode gateway --book "$BOOK" --port "$PORT" --runs "$RUNS" --orders "$ORDERS" --scenario "$CUR_SCENARIO" --csv_out "$CSV_OUT"

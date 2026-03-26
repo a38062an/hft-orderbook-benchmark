@@ -27,7 +27,7 @@ void printUsage()
               << "  --producers <count|all>  (default: 4, for mpsc mode; 'all' sweeps 1/2/4/8)\n"
               << "  --runs <count>           (default: 1)\n"
               << "  --csv_out <filename>     (default: results/results.csv)\n"
-              << "  --pin-core <id>          (optional: pin benchmark thread in direct mode)\n"
+              << "  --pin-core <id>          (optional: pin benchmark thread in direct/mpsc modes)\n"
               << "  --list_books             (list all supported order book types and exit)\n"
               << "  --list_scenarios         (list all supported scenarios and exit)\n"
               << "  --help                   (show this help and exit)\n";

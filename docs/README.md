@@ -26,6 +26,10 @@ This folder is organized by topic.
 
 - docs/benchmarking/bench_mark_configuration.md
 
+## User Manual
+
+- docs/user_manual_orderbook_developer.md
+
 ## Dissertation Support
 
-- Local working notes are maintained under `disseartation/` (git-ignored)
+- Local working notes are maintained under `disseartation/` (tracked in this workspace unless your local ignore rules differ)

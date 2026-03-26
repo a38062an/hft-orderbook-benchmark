@@ -13,6 +13,9 @@ FetchContent_MakeAvailable(googletest)
 
 include(GoogleTest)
 
+# Prevent duplicated discovered tests when reconfiguring after test target edits.
+set_property(DIRECTORY PROPERTY TEST_INCLUDE_FILES "")
+
 # ---------------------------
 # Unit tests
 # ---------------------------
@@ -45,7 +48,10 @@ target_include_directories(hft_unit_tests
 		${CMAKE_SOURCE_DIR}/libs
 )
 
-gtest_discover_tests(hft_unit_tests)
+gtest_discover_tests(hft_unit_tests
+	PROPERTIES
+		LABELS "unit"
+)
 
 # ---------------------------
 # Integration tests (optional)
@@ -67,7 +73,10 @@ if(HFT_ENABLE_INTEGRATION_TESTS)
 			${CMAKE_SOURCE_DIR}/libs
 	)
 
-	gtest_discover_tests(hft_integration_tests)
+	gtest_discover_tests(hft_integration_tests
+		PROPERTIES
+			LABELS "integration;network"
+	)
 endif()
 
 # ---------------------------

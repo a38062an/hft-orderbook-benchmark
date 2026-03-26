@@ -182,3 +182,13 @@ Evidence:
 - Use wording like "in this run" or "under this benchmark configuration".
 - Do not extrapolate absolute latency values across different hardware/OS configurations.
 - Where differences are small and variance is high, avoid strong causal language in captions and defer causality to body text.
+
+## Gateway Mode Interpretation Notes
+
+**Scenario-dependent winners despite network dominance:**
+
+Although gateway-mode end-to-end latency is 98.7% network-dominated (median), the winning implementation still changes by scenario (pool wins dense_full, map wins fixed_levels, hybrid wins mixed, etc.). This appears paradoxical: if network is identical across all books, why do winners differ?
+
+Answer: Queue and Engine components are scenario-dependent. When insertion volume increases (dense_full) or order placement becomes adversarial (worst_case_fifo), the queue response and engine processing time vary by implementation. These components remain ~1% of total latency, but they shift which implementation is fastest because the margins are narrow at the microsecond scale. In other words, the network tax is constant, but the algo-specific queue+engine cost is what determines ranking.
+
+**Implication for dissertation narrative:** Gateway results validate that engine-internal efficiency still matters even when network dominates, but only at the margin. The practical takeaway is not "all implementations are equally good in gateway" but rather "network overhead dwarfs algorithmic differences, so deployment decisions should prioritize infrastructure (network, codec) over order book choice."

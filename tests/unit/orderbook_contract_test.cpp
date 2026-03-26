@@ -23,8 +23,7 @@ class OrderBookContractTest : public ::testing::TestWithParam<std::string>
     std::unique_ptr<IOrderBook> book;
 };
 
-INSTANTIATE_TEST_SUITE_P(AllBooks, OrderBookContractTest,
-                         ::testing::Values("map", "vector", "array", "hybrid", "pool"));
+INSTANTIATE_TEST_SUITE_P(AllBooks, OrderBookContractTest, ::testing::ValuesIn(OrderBookFactory::getSupportedTypes()));
 
 // -----------------------------------------------------------------------------
 // Happy Path Cases

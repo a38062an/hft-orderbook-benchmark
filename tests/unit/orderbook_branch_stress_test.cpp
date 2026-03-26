@@ -3,6 +3,7 @@
 #include "orderbooks/array_order_book.hpp"
 #include "orderbooks/hybrid_order_book.hpp"
 #include "orderbooks/map_order_book.hpp"
+#include "orderbooks/pool_order_book.hpp"
 #include "orderbooks/vector_order_book.hpp"
 
 namespace hft
@@ -45,6 +46,11 @@ TEST(OrderBookBranchStressTest, HitsArrayOrderBookThousandthMatchBranch)
 TEST(OrderBookBranchStressTest, HitsHybridOrderBookThousandthMatchBranch)
 {
     runThousandSingleTradeMatches([] { return HybridOrderBook{}; });
+}
+
+TEST(OrderBookBranchStressTest, HitsPoolOrderBookThousandthMatchBranch)
+{
+    runThousandSingleTradeMatches([] { return PoolOrderBook{}; });
 }
 
 } // namespace

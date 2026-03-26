@@ -27,7 +27,7 @@
 
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-A C++20 exchange infrastructure is presented for benchmarking five order book data structure strategies across direct and gateway operating modes. The framework contains a TCP order gateway, an incremental FIX parser, a lock-free single-producer single-consumer queue, and a single-threaded matching engine connected to five interchangeable order book implementations. Results show that direct-indexed array access achieves the strongest direct-mode latency under most scenarios, with representative mean latency near 174 ns in mixed conditions, while sorted-vector insertion degrades sharply in dense books, reaching approximately 13,748 ns in dense-full workloads. End-to-end gateway measurements remain dominated by network and transport overhead, with loopback TCP path latency on the order of 4.5 ms, reducing the practical contribution of order-book-internal differences to total latency. Findings support two conclusions. First, cache locality and elimination of pointer indirection dominate low-latency matching performance when algorithmic work is isolated. Second, system-level bottlenecks can mask data structure gains unless transport and parsing overhead are reduced. The project contributes a reproducible benchmark harness, scenario-driven workload generation, and decomposed Net/Que/Eng timing suitable for future experiments on kernel-bypass networking and multi-producer ingestion.
+A C++20 exchange infrastructure is presented for benchmarking five order book data structure strategies across direct and gateway operating modes. The framework contains a TCP order gateway, an incremental FIX parser, a lock-free single-producer single-consumer queue, and a single-threaded matching engine connected to interchangeable order book implementations. On the canonical pinned-run dataset (2026-03-26), direct-indexed array access is the strongest direct-mode implementation in six of seven scenarios, with mixed-scenario mean latency of 210.72 ns and dense-full mean latency of 213.44 ns. In contrast, sorted-vector insertion degrades sharply in dense books, reaching 16082.10 ns in dense-full direct mode (75.3x slower than array). Gateway-mode latency is dominated by network and transport overhead for non-vector rows (median Net share 98.7\%), which reduces the visible contribution of internal order-book differences to end-to-end timing. The evidence supports two bounded conclusions. First, data-structure execution path and memory-access behavior are the dominant factors when algorithmic work is isolated. Second, in end-to-end gateway operation, system-level bottlenecks can mask data-structure gains unless transport and parsing overhead are reduced. The project contributes a reproducible benchmark harness, scenario-driven workload generation, and decomposed Net/Que/Eng timing suitable for future experiments on kernel-bypass networking and multi-producer ingestion.
 
 \clearpage
 \pagenumbering{arabic}
@@ -44,15 +44,15 @@ A C++20 exchange infrastructure is presented for benchmarking five order book da
 
 \appendix
 \chapter{LockFreeQueue Implementation}
-Add the full lock-free queue source listing here.
+This appendix contains the lock-free queue implementation used in the benchmark pipeline. The listing is provided in the submitted artefact bundle as source code under the corresponding implementation directories.
 
 \chapter{ArrayOrderBook addOrder}
-Add focused listing for index mapping and best-level cache updates.
+This appendix points to the focused ArrayOrderBook insertion path, including index mapping and best-level cache updates, as implemented in the submitted source artefacts.
 
 \chapter{Matching Engine Timestamp Decomposition}
-Add process order listing with send/receive/engine timestamps.
+This appendix references the matching-engine processing path and timestamp decomposition used for Net/Que/Eng breakdown in the evaluation chapter.
 
 \chapter{FIX Incremental Parser}
-Add parser loop showing partial-message buffering and checksum boundary detection.
+This appendix references the incremental FIX parser loop used for partial-message buffering and checksum boundary detection in the gateway path.
 
 \end{document}

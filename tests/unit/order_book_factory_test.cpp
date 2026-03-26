@@ -24,5 +24,24 @@ TEST(OrderBookFactoryTest, ThrowsForUnknownType)
     EXPECT_THROW(OrderBookFactory::create("unknown"), std::runtime_error);
 }
 
+TEST(OrderBookFactoryTest, CanCreateAllAdvertisedTypes)
+{
+    const auto types = OrderBookFactory::getSupportedTypes();
+    ASSERT_FALSE(types.empty());
+    for (const auto &type : types)
+    {
+        EXPECT_NO_THROW({ auto b = OrderBookFactory::create(type); }) << "Failed creating type: " << type;
+    }
+}
+
+TEST(OrderBookFactoryTest, SupportedTypesAreUnique)
+{
+    const auto types = OrderBookFactory::getSupportedTypes();
+    std::vector<std::string> sorted = types;
+    std::sort(sorted.begin(), sorted.end());
+    auto it = std::adjacent_find(sorted.begin(), sorted.end());
+    EXPECT_EQ(it, sorted.end()) << "Duplicate factory type: " << *it;
+}
+
 } // namespace
 } // namespace hft

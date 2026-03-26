@@ -11,7 +11,6 @@ PoolOrderBook::PoolOrderBook(Index maxOrders)
     orderLookup_.reserve(maxOrders);
 
     orders_.resize(maxOrders);
-    std::memset(orders_.data(), 0, maxOrders * sizeof(OrderNode));
 
     for (Index i = 0; i < maxOrders - 1; ++i)
     {

@@ -61,7 +61,15 @@ Recommended dissertation reporting:
 ```bash
 cmake -S . -B build
 cmake --build build -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
-ctest --test-dir build --output-on-failure
+ctest --test-dir build -L unit --output-on-failure
+```
+
+### Integration TCP path (opt-in)
+
+```bash
+cmake -S . -B build -DHFT_ENABLE_INTEGRATION_TESTS=ON
+cmake --build build -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
+ctest --test-dir build -L integration --output-on-failure
 ```
 
 ### Coverage build and report (macOS/LLVM)

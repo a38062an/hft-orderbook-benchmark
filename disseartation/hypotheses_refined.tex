@@ -1,13 +1,13 @@
 \section*{Refined Research Hypotheses}
 
-\textbf{H1 (Ordering Structure and Locality).} Cache-local direct indexing yields materially lower direct-mode latency than tree-based and sorted-vector order book designs across most scenarios.
+\textbf{H1 (Ordering Structure and Locality).} Index-oriented order-book layouts yield materially lower direct-mode latency than tree-based and sorted-vector designs across most scenarios, with cache behavior as a contributing (not sole) mechanism.
 
-\textbf{Acceptance criteria:} array leads direct-mode mean latency in most scenarios; dense-full gap versus vector remains order-of-magnitude.
+\textbf{Acceptance criteria:} array leads direct-mode mean latency in most scenarios; dense-full gap versus vector remains order-of-magnitude; perf evidence is directionally consistent with higher memory-access pressure in slower variants.
 
-\textbf{H2 (Allocation Strategy in Isolation).} Memory pooling improves latency only when allocator overhead is a significant fraction of operation cost, and does not remove ordering-structure bottlenecks.
+\textbf{H2 (Allocation Strategy in Isolation).} Memory-pooling benefits are implementation- and workload-dependent; pooling does not remove ordering-structure bottlenecks.
 
-\textbf{Acceptance criteria:} pool improves over map in selected scenarios; pool does not approach array performance where tree traversal dominates.
+\textbf{Acceptance criteria:} pool improves over map only in selected scenarios from the canonical dataset; pool does not approach array where traversal dominates; strong allocator-causality requires dedicated allocation instrumentation.
 
 \textbf{H3 (System-Level Masking).} In gateway mode, network and queue components dominate end-to-end latency, reducing the practical impact of engine-internal data-structure differences except in queue-amplification failure cases.
 
-\textbf{Acceptance criteria:} Net plus Que dominates Eng in most rows; vector dense-full remains a clear exception due to backlog growth.
+\textbf{Acceptance criteria:} Network (Net) plus Queue (Que) dominates Engine (Eng) in 34 of 35 non-vector rows; vector dense-full is a clear boundary case showing queue-amplification failure under sustained dense insertion.
