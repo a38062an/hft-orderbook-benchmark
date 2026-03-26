@@ -5,7 +5,7 @@
 #include <tuple>
 #include <vector>
 
-#include "core/Order.hpp"
+#include "core/order.hpp"
 #include "core/i_order_book.hpp"
 #include "utils/metrics_collector.hpp"
 

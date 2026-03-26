@@ -8,7 +8,7 @@
 #include "modules/order_book_benchmark.hpp"
 #include "modules/order_generator.hpp"
 
-#include "core/Order.hpp"
+#include "core/order.hpp"
 #include "core/order_book_factory.hpp"
 #include "utils/thread_pinning.hpp"
 

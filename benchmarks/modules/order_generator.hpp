@@ -2,8 +2,8 @@
 
 #include <random>
 
-#include "core/Order.hpp"
-#include "core/Types.hpp"
+#include "core/order.hpp"
+#include "core/types.hpp"
 
 namespace hft
 {

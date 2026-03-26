@@ -57,6 +57,21 @@ This repository supports cross-platform development, but the measurement workflo
 - macOS: correctness testing, unit/integration validation, and coverage workflow.
 - WSL2/Linux: benchmark runs that require thread pinning and Linux perf counters.
 
+### 4.6 Thread Pinning & Performance Isolation
+
+For direct-mode benchmarking, the system supports explicit CPU core pinning to ensure deterministic results.
+
+- **Internal Flag**: Use `--pin-core <id>` to bind the execution thread to a specific logical processor.
+- **Verification**: On startup, the benchmark binary will output: `Thread successfully pinned to core <id>`.
+- **System Support**: 
+  - **Linux**: Uses `pthread_setaffinity_np`.
+  - **macOS**: Uses `thread_policy_set` (handled as a priority hint by the Mach kernel).
+  - **WSL2**: Fully supported; recommended for canonical dissertation measurements.
+
+> [!TIP]
+> Combine with Linux `taskset` for maximum isolation:
+> `taskset -c 0 ./build/benchmarks/orderbook_benchmark --mode direct --pin-core 0`
+
 Why this split exists:
 
 - Linux provides stable CPU affinity controls (`taskset`, `sched_setaffinity`) used by this benchmark workflow.

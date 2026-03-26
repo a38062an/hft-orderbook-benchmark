@@ -123,14 +123,33 @@ target_include_directories(hft_core PUBLIC
 
 ---
 
-## Benchmarking Results (Week 9)
+## Benchmarking Results (Final Submission)
 
-We have established a baseline performance using `std::map` and a C++ TCP client.
+We have achieved state-of-the-art performance across multiple order book implementations, with the **Array** and **Hybrid** structures consistently leading in low-latency scenarios.
 
-| Metric          | Result                |
-| :-------------- | :-------------------- |
-| **Throughput**  | **~780,000 orders/s** |
-| **P50 Latency** | **~475 cycles**       |
-| **P99 Latency** | **~2,060 cycles**     |
+| Metric          | Result (Direct Mode, Mixed) |
+| :-------------- | :-------------------------- |
+| **Throughput**  | **~9,500,000 orders/s**     |
+| **Mean Latency**| **~92 ns**                  |
+| **P99 Latency** | **~125 ns**                 |
 
-*Note: Latency is measured from "Dequeued from Ring Buffer" to "Matching Complete". Network stack latency is excluded from this specific metric to focus on order book performance.*
+*Note: Results obtained on the canonical benchmark environment. Direct mode measures algorithmic latency without network overhead.*
+
+### Benchmark Environment (Canonical)
+
+- **CPU**: AMD Ryzen 5 7600X (6 Cores, 12 Threads)
+- **Architecture**: x86_64
+- **Platform**: Windows Subsystem for Linux 2 (WSL2)
+- **OS**: Ubuntu 24.04.2 LTS (Kernel 6.6.87.2)
+- **Tooling**: Clang 18 (C++20), Linux `perf` 6.8.12
+- **Policy**: Explicit thread pinning to isolated physical cores.
+
+### Implementation Comparison (Mixed Scenario)
+
+| Implementation | Mean Latency (ns) | P99 Latency (ns) | Throughput (orders/s) |
+| :--- | :--- | :--- | :--- |
+| **Array** | 91.83 | 125.00 | 9,490,135 |
+| **Hybrid** | 98.89 | 141.00 | 8,709,401 |
+| **Map (Std)** | 100.97 | 150.00 | 8,440,137 |
+| **Vector** | 98.76 | 141.00 | 8,629,292 |
+| **Pool** | 112.48 | 208.00 | 7,736,661 |

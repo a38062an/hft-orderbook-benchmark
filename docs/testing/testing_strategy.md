@@ -90,5 +90,27 @@ Coverage HTML report output:
   - Mitigation: this is explicitly scoped in methodology; MPSC benchmark covers concurrency scaling separately.
 - **Timing variability** in benchmark mode due to OS scheduling and hardware frequency.
   - Mitigation: repeated runs, warmup phases, and reporting of variance.
-- **Coverage inflation risk** if tests only execute happy paths.
-  - Mitigation: edge-case tests for out-of-range prices, pool exhaustion, incomplete FIX frames, and partial network frames.
+## Canonical Benchmark Environment
+
+For the dissertation results (2026-03-26 dataset), all performance benchmarks were executed on the following canonical platform:
+
+- **Hardware**: AMD Ryzen 5 7600X (6 Cores / 12 Threads) @ 4.7GHz.
+- **System**: WSL2 (Windows Subsystem for Linux 2) on Windows 11.
+- **OS**: Ubuntu 24.04.2 LTS (Kernel 6.6.87.2).
+- **Core Pinning**: Performance runs were executed with explicit thread-to-core pinning to physical cores to minimize context-switch noise.
+- **Perf Analysis**: Linux `perf` events (L1/L2, task-clock) collected via the WSL-specific `linux-tools-6.8.0-106` package.
+
+See `results/perf/validation_real/host_provenance.txt` for exact run metadata.
+
+## Thread Pinning & Isolation Strategy
+
+To achieve nanosecond-level precision, the project employs a "double-enforcement" pinning strategy:
+
+1.  **OS-Level Enforcement**: The `run_direct_gateway_with_perf.sh` script uses `taskset -c <core>` to restrict the process to a specific physical core.
+2.  **Process-Level Confirmation**: The `orderbook_benchmark` binary uses the `--pin-core <id>` flag, which internally calls `pthread_setaffinity_np` (on Linux) or `thread_policy_set` (on macOS) to ensure the benchmark thread itself is bound to the target core.
+3.  **Verification**: The binary explicitly verifies the affinity mask and prints "Thread successfully pinned to core X" to `stdout` upon successful initialization.
+
+### Rationale for Direct vs. Gateway Modes
+
+-   **Direct/MPSC Modes**: Pinning is **mandatory**. This minimizes L1/L2 cache evictions and OS scheduler interference, allowing us to measure the raw algorithmic latency of the order book structures.
+-   **Gateway Mode**: Pinning is **intentionally disabled** for automated sweeps. Since this mode involves two distinct processes (Client and Server) communicating over a loopback socket, pinning both to the same core would introduce significant context-switching overhead, while pinning them to different cores would vary by host architecture. Instead, we allow the OS scheduler to manage the pair, focusing the measurement on the end-to-end network stack and queueing effects.
