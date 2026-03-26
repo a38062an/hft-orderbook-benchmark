@@ -28,7 +28,9 @@ void printUsage()
               << "  --runs <count>           (default: 1)\n"
               << "  --csv_out <filename>     (default: results/results.csv)\n"
               << "  --pin-core <id>          (optional: pin benchmark thread in direct mode)\n"
-              << "  --list_books             (list all supported order book types and exit)\n";
+              << "  --list_books             (list all supported order book types and exit)\n"
+              << "  --list_scenarios         (list all supported scenarios and exit)\n"
+              << "  --help                   (show this help and exit)\n";
 }
 
 struct BenchmarkResult
@@ -686,6 +688,14 @@ int main(int argc, char *argv[])
         }
     }
 
+    if (mode != "direct" && mode != "gateway" && mode != "mpsc")
+    {
+        std::cerr << "Error: Invalid --mode value: " << mode << "\n";
+        std::cerr << "Valid values are: direct, gateway, mpsc\n";
+        printUsage();
+        return 1;
+    }
+
     if ((mode == "direct" || mode == "mpsc") && pinCore >= 0)
     {
         if (hft::pinToCore(pinCore))
@@ -765,6 +775,11 @@ int main(int argc, char *argv[])
 
                 for (int p : producerCounts)
                     runMpscBenchmark(currentBook, currentScenario, orders, runs, p, allResults);
+            }
+            else
+            {
+                std::cerr << "Error: Unsupported mode at dispatch time: " << mode << "\n";
+                return 1;
             }
         }
     }

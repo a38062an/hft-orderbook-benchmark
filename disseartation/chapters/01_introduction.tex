@@ -1,0 +1,18 @@
+\chapter{Introduction}
+
+\section{Context and Motivation}
+High-Frequency Trading (HFT) systems operate where tens to hundreds of nanoseconds can influence execution priority. The limit order book is the critical path data structure because every insert, cancel, and match operation passes through it. This project evaluates whether data structure selection in the order book materially changes latency and throughput under realistic workload regimes.
+
+\section{Problem Statement}
+The central research problem is to determine how order book implementation strategy influences latency under differing market microstructure conditions. A tree-based structure offers logarithmic complexity and stable iterators, while direct-index arrays offer constant-time access with bounded price assumptions. Sorted vectors may provide contiguous-memory benefits yet incur insert-shift penalties in dense books. The net effect is workload-dependent and not obvious from asymptotic complexity alone.
+
+\section{Objectives}
+\begin{itemize}
+  \item Design and enforce a common interface across all order book variants for fair comparison.
+  \item Implement five distinct order book designs: map, array, vector, pool, and hybrid.
+  \item Measure isolated algorithmic latency in direct mode and system-level latency in gateway mode.
+  \item Explain observed behavior using hardware architecture concepts including cache hierarchy and locality.
+\end{itemize}
+
+\section{Report Structure}
+Chapter 2 presents theoretical background in market microstructure, hardware architecture, data structures, and lock-free queues. Chapter 3 describes the benchmark system design and constraints. Chapter 4 details implementation choices. Chapter 5 reports functional and performance evaluation findings. Chapter 6 concludes with hypothesis outcomes, limitations, and future work.

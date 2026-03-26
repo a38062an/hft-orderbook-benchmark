@@ -19,6 +19,18 @@ void signalHandler(int signum)
     isApplicationRunning.store(false, std::memory_order_relaxed);
 }
 
+void printUsage()
+{
+    std::cout << "Usage: hft_exchange_server [options]\n"
+              << "Options:\n"
+              << "  --book <map|array|vector|hybrid|pool>  (default: map)\n"
+              << "  --port <number>                        (default: 12345)\n"
+              << "  --pin-core <id>                        (optional: pin matching thread)\n"
+              << "  --csv_out <filename>                   (optional: append final stats row)\n"
+              << "  --list_books                           (list all supported order book types and exit)\n"
+              << "  --help                                 (show this help and exit)\n";
+}
+
 /**
  * Currently tests map order book
  */
@@ -35,7 +47,22 @@ int main(int argc, char *argv[])
     for (int i = 1; i < argc; ++i)
     {
         std::string arg = argv[i];
-        if (arg == "--port" && i + 1 < argc)
+        if (arg == "--help")
+        {
+            printUsage();
+            return 0;
+        }
+        else if (arg == "--list_books")
+        {
+            auto types = OrderBookFactory::getSupportedTypes();
+            for (size_t j = 0; j < types.size(); ++j)
+            {
+                std::cout << types[j] << (j + 1 == types.size() ? "" : " ");
+            }
+            std::cout << "\n";
+            return 0;
+        }
+        else if (arg == "--port" && i + 1 < argc)
         {
             port = std::stoi(argv[++i]);
         }
@@ -50,6 +77,12 @@ int main(int argc, char *argv[])
         else if (arg == "--csv_out" && i + 1 < argc)
         {
             csvOut = argv[++i];
+        }
+        else
+        {
+            std::cerr << "Error: Unknown or incomplete option: " << arg << "\n";
+            printUsage();
+            return 1;
         }
     }
 

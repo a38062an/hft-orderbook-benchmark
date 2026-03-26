@@ -1,0 +1,13 @@
+\section*{Refined Research Hypotheses}
+
+\textbf{H1 (Ordering Structure and Locality).} Cache-local direct indexing yields materially lower direct-mode latency than tree-based and sorted-vector order book designs across most scenarios.
+
+\textbf{Acceptance criteria:} array leads direct-mode mean latency in most scenarios; dense-full gap versus vector remains order-of-magnitude.
+
+\textbf{H2 (Allocation Strategy in Isolation).} Memory pooling improves latency only when allocator overhead is a significant fraction of operation cost, and does not remove ordering-structure bottlenecks.
+
+\textbf{Acceptance criteria:} pool improves over map in selected scenarios; pool does not approach array performance where tree traversal dominates.
+
+\textbf{H3 (System-Level Masking).} In gateway mode, network and queue components dominate end-to-end latency, reducing the practical impact of engine-internal data-structure differences except in queue-amplification failure cases.
+
+\textbf{Acceptance criteria:} Net plus Que dominates Eng in most rows; vector dense-full remains a clear exception due to backlog growth.

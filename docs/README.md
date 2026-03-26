@@ -28,4 +28,4 @@ This folder is organized by topic.
 
 ## Dissertation Support
 
-- docs/dissertation/thesis_figure_captions.md
+- Local working notes are maintained under `disseartation/` (git-ignored)

@@ -4,7 +4,7 @@ Trading engine and benchmarking suite for analyzing order book data structures a
 
 ## Build Instructions
 
-Requirements: CMake, C++17, Python 3.
+Requirements: CMake, C++20 compiler, Python 3.
 
 ```bash
 mkdir -p build && cd build
@@ -52,6 +52,28 @@ Why this split exists:
 - Linux perf events used by `run_direct_gateway_with_perf.sh` are Linux-specific.
 
 Plot generation (`python3 scripts/plot_benchmark.py results/results.csv`) can run on either environment. In this project, the canonical benchmark dataset and dissertation figures are produced from the Linux/WSL2 run artifacts.
+
+## 60-Second Quickstart
+
+If you are new to this repository, run this minimal flow first:
+
+```bash
+# 1) Build
+cmake -S . -B build
+cmake --build build -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
+
+# 2) Smoke test direct mode (single case)
+./build/benchmarks/orderbook_benchmark --mode direct --book array --scenario mixed --runs 1 --orders 5000
+
+# 3) Generate plots from latest CSV
+python3 scripts/plot_benchmark.py results/results.csv
+```
+
+Expected success signals:
+
+- benchmark prints a summary table with a `direct` row for `array/mixed`
+- `results/results.csv` is created or updated
+- plot files are generated under `plots/`
 
 ## Quick Start: Full Benchmark Sweep
 

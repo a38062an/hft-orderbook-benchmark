@@ -1,0 +1,58 @@
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+\usepackage[numbers]{natbib}
+\usepackage{setspace}
+\geometry{margin=1in}
+\onehalfspacing
+
+\title{High-Frequency Trading Order Book Benchmarking in C++20}
+\author{Your Name}
+\date{\today}
+
+\begin{document}
+
+\pagenumbering{roman}
+\maketitle
+\tableofcontents
+\listoffigures
+\listoftables
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+A C++20 exchange infrastructure is presented for benchmarking five order book data structure strategies across direct and gateway operating modes. The framework contains a TCP order gateway, an incremental FIX parser, a lock-free single-producer single-consumer queue, and a single-threaded matching engine connected to five interchangeable order book implementations. Results show that direct-indexed array access achieves the strongest direct-mode latency under most scenarios, with representative mean latency near 174 ns in mixed conditions, while sorted-vector insertion degrades sharply in dense books, reaching approximately 13,748 ns in dense-full workloads. End-to-end gateway measurements remain dominated by network and transport overhead, with loopback TCP path latency on the order of 4.5 ms, reducing the practical contribution of order-book-internal differences to total latency. Findings support two conclusions. First, cache locality and elimination of pointer indirection dominate low-latency matching performance when algorithmic work is isolated. Second, system-level bottlenecks can mask data structure gains unless transport and parsing overhead are reduced. The project contributes a reproducible benchmark harness, scenario-driven workload generation, and decomposed Net/Que/Eng timing suitable for future experiments on kernel-bypass networking and multi-producer ingestion.
+
+\clearpage
+\pagenumbering{arabic}
+
+\include{chapters/01_introduction}
+\include{chapters/02_background}
+\include{chapters/03_system_design}
+\include{chapters/04_implementation}
+\include{chapters/05_testing_evaluation}
+\include{chapters/06_conclusions}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\appendix
+\chapter{LockFreeQueue Implementation}
+Add the full lock-free queue source listing here.
+
+\chapter{ArrayOrderBook addOrder}
+Add focused listing for index mapping and best-level cache updates.
+
+\chapter{Matching Engine Timestamp Decomposition}
+Add process order listing with send/receive/engine timestamps.
+
+\chapter{FIX Incremental Parser}
+Add parser loop showing partial-message buffering and checksum boundary detection.
+
+\end{document}
