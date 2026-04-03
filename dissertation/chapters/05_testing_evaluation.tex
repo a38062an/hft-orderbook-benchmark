@@ -1,10 +1,12 @@
 \chapter{Testing and Evaluation}
 
 \section{Experimental Methodology}
+This chapter evaluates the five order book implementations against three core research hypotheses. The benchmarking environment is isolated via thread-pinning to the canonical x86_64/WSL2 host (Ryzen 7600X) to ensure reproducible nanosecond-level precision.
+
+\input{hypotheses_refined}
+
 \section{Functional Validation}
 \section{Throughput Results}
 \section{Latency Analysis --- Direct Mode}
 \section{Gateway Mode --- End-to-End Decomposition}
 \section{Threats to Validity}
-
-Use scenario-by-scenario explanation and tie each key result back to hardware-level cause.
