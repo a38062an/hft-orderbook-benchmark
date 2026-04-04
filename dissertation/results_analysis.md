@@ -1,4 +1,4 @@
-# Results Analysis (Canonical run: 2026-03-26)
+# Results Analysis (Canonical)
 
 Source dataset: `results/results.csv` generated via:
 

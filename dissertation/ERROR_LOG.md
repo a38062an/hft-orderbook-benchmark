@@ -1,10 +1,10 @@
-# Error Log & Fixes (2026-03-26)
+# Error Log & Fixes
 
 ## Critical Errors
 
 ### 1. Factual Error: "Array wins 6/7" claim
 **Status:** ✅ VERIFIED_CORRECT
-**Location:** captions_canonical_2026-03-26.md, results_analysis_2026-03-26.md
+**Location:** captions_canonical.md, results_analysis.md
 **Finding:** On review, claim is actually correct - array wins 6/7 scenarios; hybrid wins tight_spread (1/7).
 **No fix needed:** Evidence and claim are consistent.
 
@@ -28,13 +28,13 @@
 
 ### 4. Ambiguous Decomposition Labels
 **Status:** ✅ FIXED
-**Location:** results_analysis_2026-03-26.md
+**Location:** results_analysis.md
 **Issue:** "Net share 98.7%" undefined - is "Net" = "Network"?
 **Fix:** Clarified table with component definitions:
 - **Network** (Net): TCP/IP round-trip, mean 94.2%, median 98.7%
 - **Queue** (Que): order wait in engine queue, mean 5.8%, median 1.2%
 - **Engine** (Eng): matching/insert/match processing, mean 0.040%, median 0.028%
-**Verification:** Updated results_analysis_2026-03-26.md with explicit component names and percentages
+**Verification:** Updated results_analysis.md with explicit component names and percentages
 
 ### 5. H3 Logic is Circular
 **Status:** ✅ FIXED
@@ -49,7 +49,7 @@
 
 ### 6. No Scenario Methodology Justification
 **Status:** ✅ FIXED
-**Location:** results_analysis_2026-03-26.md (new section 0)
+**Location:** results_analysis.md (new section 0)
 **Issue:** 7 scenarios chosen but no explanation why they're representative of real HFT conditions
 **Fix:** Added "Scenario definitions and rationale" section with:
 - fixed_levels: hot-path cache test case
@@ -59,7 +59,7 @@
 - sparse_extreme: worst-case tree traversal (±1000 tick spread)
 - dense_full: insertion volume stress and queue saturation
 - worst_case_fifo: adversarial ordering to stress rebalancing
-**Verification:** section 0 of results_analysis_2026-03-26.md now explains market relevance of each scenario
+**Verification:** section 0 of results_analysis.md now explains market relevance of each scenario
 
 ### 7. Missing Ablation Study for H2
 **Status:** ⚠️ OUT_OF_SCOPE
@@ -100,7 +100,7 @@
 
 ### 11. Scenario-Dependent Winners Inconsistent with "Masking" Claim
 **Status:** ✅ FIXED
-**Location:** captions_canonical_2026-03-26.md (new "Gateway Mode Interpretation Notes" section)
+**Location:** captions_canonical.md (new "Gateway Mode Interpretation Notes" section)
 **Issue:** If network dominates equally, why do different books win in different scenarios?
 **Fix:** Added explanation:
 - Network tax is constant (~98.7%), but Queue+Engine components are scenario-dependent
@@ -155,7 +155,7 @@
 
 ### 18. Over-strong Causal Language in H1/H2
 **Status:** ✅ FIXED
-**Location:** hypotheses_refined.tex, results_analysis_2026-03-26.md
+**Location:** hypotheses_refined.tex, results_analysis.md
 **Issue:** Prior wording implied single-cause explanation (cache locality / allocator overhead) without fully isolated measurements.
 **Fix:** Reworded to evidence-bounded claims:
 - H1: cache is a contributing mechanism, not sole cause
@@ -164,7 +164,7 @@
 
 ### 19. Potential Viva Challenge: Pooling Benefit Generalization
 **Status:** ✅ FIXED
-**Location:** hypotheses_refined.tex, results_analysis_2026-03-26.md
+**Location:** hypotheses_refined.tex, results_analysis.md
 **Issue:** Prior narrative could be interpreted as "pooling generally helps allocator pressure," but proxy runs showed high pool page-fault counts in sampled cases.
 **Fix:** Updated H2 language to conditional form and recorded pool proxy values explicitly in mechanism addendum.
 **Verification:** Hypothesis and analysis now avoid universal pooling claims and remain evidence-bounded.
@@ -186,21 +186,21 @@
 
 ### 22. WSL2 Cache Hit-Rate Feasibility Ambiguity
 **Status:** ✅ FIXED
-**Location:** results_analysis_2026-03-26.md, MEASUREMENT_COOKBOOK_2026-03-26.md
+**Location:** results_analysis.md, MEASUREMENT_COOKBOOK.md
 **Issue:** It was unclear whether cache hit rates could be measured at all on WSL2 for viva defense.
 **Fix:** Collected `L1-dcache-loads` and `L1-dcache-load-misses` via perf and derived L1 hit-rate table.
 **Verification:** `results/perf/validation_real/cache_hit_summary.csv` generated and referenced in dissertation analysis.
 
 ### 23. L2 Availability Ambiguity On WSL2
 **Status:** ✅ FIXED
-**Location:** results_analysis_2026-03-26.md, MEASUREMENT_COOKBOOK_2026-03-26.md
+**Location:** results_analysis.md, MEASUREMENT_COOKBOOK.md
 **Issue:** It was unclear whether L2 counters were actually measurable or only listed by perf.
 **Fix:** Ran direct-mode perf with `l2_cache_req_stat.*` events across benchmark cases and generated summary table.
 **Verification:** `results/perf/validation_real/l2_summary.csv` generated with non-empty values across all tested cases.
 
 ### 24. Source-Provenance Clarity Gap For Dissertation Evidence
 **Status:** ✅ FIXED
-**Location:** results_analysis_2026-03-26.md, MEASUREMENT_COOKBOOK_2026-03-26.md
+**Location:** results_analysis.md, MEASUREMENT_COOKBOOK.md
 **Issue:** Evidence sections lacked one consolidated host+command provenance block for examiner audit.
 **Fix:** Added explicit host metadata, perf binary path, and exact commands used to collect L1/L2/proxy data.
 **Verification:** provenance file and command blocks now linked in analysis and cookbook.
@@ -286,16 +286,16 @@
 7. Ablation study (would require new benchmark variants)
 
 **Files Created:**
-- disseartation/MEASUREMENT_COOKBOOK_2026-03-26.md (126 lines) - How-to guide for cache/allocator validation
+- disseartation/MEASUREMENT_COOKBOOK.md (126 lines) - How-to guide for cache/allocator validation
 
 **Files Modified:**
 - README.md: Added 3 sections (Server Binary, Results CSV Format, cross-platform caveat)
 - README.md: Added portable test commands and link to developer user manual
-- results_analysis_2026-03-26.md: Added scenario definitions; clarified decomposition labels
+- results_analysis.md: Added scenario definitions; clarified decomposition labels
 - hypotheses_refined.tex: Reframed H3 acceptance criteria with explicit boundary conditions
 - hypotheses_refined.tex: Also narrowed H1/H2 causal language to match measured evidence
-- captions_canonical_2026-03-26.md: Added gateway interpretation notes explaining scenario-winners paradox
-- MEASUREMENT_COOKBOOK_2026-03-26.md: Added collected measurement snapshot and caveats
+- captions_canonical.md: Added gateway interpretation notes explaining scenario-winners paradox
+- MEASUREMENT_COOKBOOK.md: Added collected measurement snapshot and caveats
 - disseartation/README.md: Updated workspace status wording and added viva resource index
 - docs/user_manual_orderbook_developer.md: New implementation-focused user manual
 - docs/README.md: Corrected dissertation folder tracking statement
@@ -305,7 +305,7 @@
 - scripts/run_gateway_sweep.sh: Added binary checks, server path fallback, and startup validation
 - tests/CMakeLists.txt: Added unit/integration labels
 - CMakeLists.txt: Integration tests default to OFF for portable unit-first workflow
-- ERROR_LOG_2026-03-26.md: This file
+- ERROR_LOG.md: This file
 
 **Product Quality Improvements:**
 - User UX: 3 areas (missing docs for server, CSV schema, unclear scenarios)

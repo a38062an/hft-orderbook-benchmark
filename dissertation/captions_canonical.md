@@ -1,4 +1,4 @@
-# Thesis Figure Captions (Evidence-Anchored, Canonical Run 2026-03-26)
+# Thesis Figure Captions (Evidence-Anchored, Canonical)
 
 Canonical dataset:
 
@@ -14,7 +14,7 @@ Use these captions directly in the dissertation and keep the evidence anchors in
 - Gateway winners by scenario: plots/tables/rank_direct_vs_gateway.md
 - Mid-tier winners only: plots/tables/mid_tier_winners_no_array.md
 - Operation winners (insert/cancel/lookup): plots/tables/operation_winners_direct.md
-- Quantitative synthesis and variability notes: disseartation/results_analysis_2026-03-26.md
+- Quantitative synthesis and variability notes: disseartation/results_analysis.md
 
 ## Figure captions and backing evidence
 
@@ -47,7 +47,7 @@ Evidence:
 
 - direct map tight_spread has high variance (CV 52.6%)
 - direct map fixed_levels has high variance (CV 44.6%)
-- see variability section in disseartation/results_analysis_2026-03-26.md
+- see variability section in disseartation/results_analysis.md
 
 ### plots/direct/operation_latency_breakdown_selected_scenarios.png
 
@@ -142,7 +142,7 @@ Middle-tier slowdown comparison between direct and gateway modes. Direct mode sh
 Evidence:
 
 - non-vector gateway decomposition medians: Net share 98.7%, Queue share 1.2%, Engine share 0.028%
-- source: disseartation/results_analysis_2026-03-26.md
+- source: disseartation/results_analysis.md
 
 ### plots/mpsc/throughput_scaling.png
 
@@ -164,7 +164,7 @@ Evidence:
 
 - stable engine examples: pool/sparse_extreme ratio 1.007, array/fixed_levels ratio 1.007
 - variable stress example: array/worst_case_fifo ratio 1.336
-- source: disseartation/results_analysis_2026-03-26.md
+- source: disseartation/results_analysis.md
 
 ### plots/scenario_validity/mixed_profile.png
 
