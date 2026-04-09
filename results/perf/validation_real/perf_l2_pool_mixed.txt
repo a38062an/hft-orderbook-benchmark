@@ -1,0 +1,4 @@
+12178467,,l2_cache_req_stat.all,207521961,100.00,58.685,M/sec
+5616892,,l2_cache_req_stat.dc_hit_in_l2,207521961,100.00,27.066,M/sec
+1384764,,l2_cache_req_stat.ic_dc_miss_in_l2,207521961,100.00,6.673,M/sec
+207.52,msec,task-clock,207521961,100.00,1.013,CPUs utilized

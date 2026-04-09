@@ -1,0 +1,6 @@
+438476680,,L1-dcache-loads,101644217,100.00,4.314,G/sec
+1379811,,L1-dcache-load-misses,101644217,100.00,0.31,of all L1-dcache accesses
+3704865,,cache-references,101644217,100.00,36.449,M/sec
+426926,,cache-misses,101644217,100.00,11.52,of all cache refs
+49874,,dTLB-load-misses,101644217,100.00,,
+101.64,msec,task-clock,101644217,100.00,1.011,CPUs utilized

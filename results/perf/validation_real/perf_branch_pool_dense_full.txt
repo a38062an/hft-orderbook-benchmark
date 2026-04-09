@@ -1,0 +1,7 @@
+# started on Thu Apr  9 12:40:00 2026
+
+106398552,,branches,94743750,100.00,1.123,G/sec
+6859475,,branch-misses,94743750,100.00,6.45,of all branches
+562104869,,instructions,94743750,100.00,1.14,insn per cycle
+491342550,,cycles,94743750,100.00,5.186,GHz
+94.74,msec,task-clock,94743750,100.00,1.073,CPUs utilized

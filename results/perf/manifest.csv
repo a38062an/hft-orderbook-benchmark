@@ -1,0 +1,3 @@
+timestamp,step,mode,pinning,core,scenario,runs,orders,books,csv_out,perf_log
+20260323_204525,direct+gateway,direct,pinned,0,all,5,10000,all,results/results.csv,results/perf/direct_perf_20260323_204525.txt
+20260323_204525,mpsc,mpsc,pinned,0,all,5,10000,all,results/results.csv,

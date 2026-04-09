@@ -28,7 +28,14 @@ env/
 venv/
 
 # Project specific
-results/
 .cache/
-results/
 docs/dissertation/
+
+# Ignore all generated benchmark result files by default.
+results/
+
+# Keep perf evidence artifacts versioned.
+!results/
+results/*
+!results/perf/
+!results/perf/**

@@ -1,0 +1,9 @@
+book,scenario,branches,branch_misses,branch_miss_rate,branch_hit_rate,branch_miss_pct,instructions,cycles,ipc,branch_mpki,task_clock_ms,perf_file
+array,mixed,31643670,481526,0.015217,0.984783,1.522,180915657,99078925,1.8260,2.6616,20.52,results/perf/validation_real/perf_branch_array_mixed.txt
+array,dense_full,30567574,430017,0.014068,0.985932,1.407,173981087,89905521,1.9352,2.4716,18.65,results/perf/validation_real/perf_branch_array_dense_full.txt
+map,mixed,36682503,578040,0.015758,0.984242,1.576,212098732,116954374,1.8135,2.7253,23.62,results/perf/validation_real/perf_branch_map_mixed.txt
+map,dense_full,47168245,638332,0.013533,0.986467,1.353,275829448,152815450,1.8050,2.3142,29.94,results/perf/validation_real/perf_branch_map_dense_full.txt
+vector,mixed,37002265,566815,0.015318,0.984682,1.532,216350883,117680032,1.8385,2.6199,23.54,results/perf/validation_real/perf_branch_vector_mixed.txt
+vector,dense_full,366302717,1414598,0.003862,0.996138,0.386,2380287143,1228134073,1.9381,0.5943,229.71,results/perf/validation_real/perf_branch_vector_dense_full.txt
+pool,mixed,93647542,6888088,0.073553,0.926447,7.355,485023690,440411166,1.1013,14.2015,110.78,results/perf/validation_real/perf_branch_pool_mixed.txt
+pool,dense_full,106398552,6859475,0.064470,0.935530,6.447,562104869,491342550,1.1440,12.2032,94.74,results/perf/validation_real/perf_branch_pool_dense_full.txt

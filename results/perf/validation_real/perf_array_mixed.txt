@@ -1,0 +1,8 @@
+2008899,,cache-references,77277179,100.00,25.996,M/sec
+290743,,cache-misses,77277179,100.00,14.47,of all cache refs
+<not supported>,,LLC-loads,0,100.00,,
+<not supported>,,LLC-load-misses,0,100.00,,
+861456,,L1-dcache-load-misses,77277179,100.00,,
+1042,,page-faults,77277179,100.00,13.484,K/sec
+1034,,minor-faults,77277179,100.00,13.380,K/sec
+77.28,msec,task-clock,77277179,100.00,0.770,CPUs utilized

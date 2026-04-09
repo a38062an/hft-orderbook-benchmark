@@ -1,0 +1,19 @@
+# started on Mon Mar 23 20:45:25 2026
+
+
+ Performance counter stats for './build/benchmarks/orderbook_benchmark --mode direct --book all --scenario all --runs 5 --orders 10000 --pin-core 0 --csv_out results/results.csv':
+
+           3105.15 msec task-clock                       #    0.988 CPUs utilized             
+       16316357935      cycles                           #    5.255 GHz                       
+       32373374709      instructions                     #    1.98  insn per cycle            
+         247888303      cache-references                 #   79.831 M/sec                     
+          10367846      cache-misses                     #    4.18% of all cache refs         
+        5298264199      branches                         #    1.706 G/sec                     
+          64171218      branch-misses                    #    1.21% of all branches           
+
+       3.143676488 seconds time elapsed
+
+       2.651021000 seconds user
+       0.437199000 seconds sys
+
+
