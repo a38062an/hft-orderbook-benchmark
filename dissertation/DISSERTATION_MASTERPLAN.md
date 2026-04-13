@@ -10,9 +10,11 @@
 ---
 
 ## AUTHORSHIP AND TOOLING BOUNDARIES (Strict)
+
 This dissertation is authored primarily by Anthony Nguyen. External tooling is
 used for build troubleshooting, formatting support, and editorial quality
 checks only.
+
 - Tooling role: LaTeX troubleshooting, build automation, figure/table formatting,
    and technical feedback on draft structure.
 - Human role: researching, writing all original prose, interpreting data, and
@@ -23,12 +25,14 @@ checks only.
 ---
 
 ## CONTEXT FOR NEW CHAT SESSIONS
+
 When starting a new session, paste this file and say:
 "I am writing my Manchester CS dissertation on HFT order book benchmarking. This file is my master plan. Please act as a strict supervisor holding me to the 80%+ standard described below. I am currently working on [section name]. Here is my draft: [paste draft]."
 
 ---
 
 ## THE Official UoM Assessment Rubric (Targeting 80--100%)
+
 Based on the `project_assessment.pdf`, your grader will evaluate the dissertation strictly across multiple dimensions. To secure a First-Class grade ("Excellent 80-89" or "Outstanding 90-100"), the dissertation must demonstrably hit these precise markers:
 
 1. **Report Writing & Narrative**:
@@ -46,7 +50,9 @@ Based on the `project_assessment.pdf`, your grader will evaluate the dissertatio
 ## THE 80%+ ACADEMIC STANDARD (Non-Negotiable Rules)
 
 ### 1. The Golden Thread
+
 Every sentence must do one of three things:
+
 - Establish a requirement
 - Explain how the requirement was built
 - Prove whether the requirement was met
@@ -54,13 +60,16 @@ Every sentence must do one of three things:
 If a sentence does none of these, cut it.
 
 ### 2. Requirements Are Law
+
 Every FR and NFR has an ID. Every Chapter 5 section must explicitly reference those IDs. Example: "This result validates NFR-3 (isolation) and NFR-2 (fairness)..."
 
 ### 3. Results vs Evaluation Are Strictly Separated
+
 - Results: Pure empirical reporting. Numbers only. No opinion.
 - Evaluation: Contextualise results against NFRs and hypotheses. Apply Amdahl's Law for gateway findings.
 
 ### 4. Defensive Academic Writing — The "Do Not Say" List
+
 | Do NOT say | Say instead |
 |---|---|
 | "proves" | "strongly indicates", "the evidence suggests" |
@@ -71,9 +80,11 @@ Every FR and NFR has an ID. Every Chapter 5 section must explicitly reference th
 | Universal claims | Bound to: "within the WSL2/AMD Ryzen 5 7600X environment..." |
 
 ### 5. Paragraph Structure (Every Technical Paragraph)
+
 Claim -> Empirical Evidence -> Mechanism/Reasoning -> Link to Hypothesis/NFR
 
 ### 6. Information Density
+
 Figure captions must be mini-abstracts. Don't say "Figure 4 shows performance." Say: "Figure 4 demonstrates a 75.3x latency degradation in the std::vector implementation under dense_full load, driven by dynamic capacity reallocation on the critical path."
 
 ---
@@ -97,14 +108,17 @@ Figure captions must be mini-abstracts. Don't say "Figure 4 shows performance." 
 
 **H1 (Ordering Structure and Locality)**
 Index-oriented order-book layouts yield materially lower direct-mode latency than tree-based and sorted-vector designs across most scenarios, with cache behavior as a contributing (not sole) mechanism.
+
 - Acceptance: array leads direct-mode mean latency in most scenarios; dense-full gap versus vector remains order-of-magnitude; perf evidence directionally consistent with higher memory-access pressure in slower variants.
 
 **H2 (Allocation Strategy in Isolation)**
 Memory-pooling benefits are implementation- and workload-dependent; pooling does not remove ordering-structure bottlenecks.
+
 - Acceptance: pool improves over map only in selected scenarios; pool does not approach array where traversal dominates; strong allocator-causality requires dedicated allocation instrumentation.
 
 **H3 (System-Level Masking)**
 In gateway mode, network and queue components dominate end-to-end latency, reducing the practical impact of engine-internal data-structure differences except in queue-amplification failure cases.
+
 - Acceptance: Net + Que dominates Eng in 34 of 35 non-vector rows; vector dense_full is clear boundary case showing queue-amplification failure.
 
 ---
@@ -112,6 +126,7 @@ In gateway mode, network and queue components dominate end-to-end latency, reduc
 ## FORMAL REQUIREMENTS TABLES
 
 ### Functional Requirements
+
 | ID | Requirement | Testable Criterion |
 |---|---|---|
 | FR-1 | Implement five distinct order book data structures | Five implementations present and benchmarkable |
@@ -122,6 +137,7 @@ In gateway mode, network and queue components dominate end-to-end latency, reduc
 | FR-6 | Include correctness test suite verifying semantic parity across implementations | All implementations produce identical outputs for equivalent inputs |
 
 ### Non-Functional Requirements
+
 | ID | Requirement | Testable Criterion |
 |---|---|---|
 | NFR-1 | Correctness: semantic parity across all implementations | No variant has special-case logic biasing results |
@@ -155,12 +171,12 @@ In gateway mode, network and queue components dominate end-to-end latency, reduc
 1. [COMPLETED] Requirements tables
 2. **NOW -> Chapter 5, Section: Experimental Methodology**
 3. Chapter 5, Section: Functional Validation
-5. Chapter 5, Section: Latency Analysis — Direct Mode
+4. Chapter 5, Section: Latency Analysis — Direct Mode
     - 5.4.1 Scenario-Specific Latency Trends
     - 5.4.2 Architectural Mechanisms: Pool and Hybrid
     - 5.4.3 Tail Latency Distribution and Determinism
-6. Chapter 5, Section: Gateway Mode — End-to-End Decomposition
-7. Chapter 5, Section: Threats to Validity
+5. Chapter 5, Section: Gateway Mode — End-to-End Decomposition
+6. Chapter 5, Section: Threats to Validity
 7. Chapter 2 — Background (backfill theory to support Ch5 findings)
 8. Chapter 3 — Design (requirements tables + architecture)
 9. Chapter 4 — Implementation (novel choices only)
@@ -173,62 +189,71 @@ In gateway mode, network and queue components dominate end-to-end latency, reduc
 ## SESSION-BY-SESSION WRITING BRIEFS
 
 ### SESSION 1 — Chapter 5: Experimental Methodology
+
 **File:** `05_testing_evaluation.tex`
 **Section:** `\section{Experimental Methodology}`
 
 Write 4 paragraphs:
 
 **Paragraph 1 — Environment declaration**
+
 - Name: AMD Ryzen 5 7600X, WSL2 Ubuntu 24.04.2, perf 6.8.12, std::chrono wall-clock timing
 - Acknowledge WSL2 virtualisation layer vs bare-metal
 - Bound all absolute latency claims to this environment
 - This pre-empts the marker's biggest criticism
 
 **Paragraph 2 — Benchmark modes**
+
 - Two modes prevent conflation of algorithmic and systemic latency
 - Direct mode: in-process, CPU thread-pinned, no transport overhead -> maps to NFR-3
 - Gateway mode: TCP stack + FIX decoder + lock-free MPSC queue -> maps to NFR-4
 - Separation is deliberate and architecturally motivated
 
 **Paragraph 3 — Dataset and statistical approach**
+
 - 35 direct rows, 35 gateway rows, 140 MPSC rows, 210 total
 - Primary metric: mean latency; standard deviation reported where variance is notable
 - Acknowledge run count as pragmatic balance between confidence and stability
 - Maps to NFR-5 and NFR-6
 
 **Paragraph 4 — Hypotheses link**
+
 - H1, H2, H3 serve as evaluative framework
 - Each results section maps explicitly to its hypothesis and NFR IDs
 - 2 sentences only
 
-**Rule:** Write in your own words. Do not copy generated wording verbatim.
-Use the analytical prompts provided in the LaTeX comments as your roadmap.
-
 ### SESSION 4 — Chapter 5: Latency Analysis (Direct Mode)
+
 **File:** `05_testing_evaluation.tex`
 **Section:** `\section{Latency Analysis - Direct Mode}`
 
 **Part 1 — Mean Latency and IPC Mechanisms**
+
 - Reference Table 5.3 data (Array @ 13.9ns vs Vector @ 145.5ns).
 - Claim: Array wins via mechanical sympathy.
 - Evidence: Perf data (843k vs 1.39m L1 misses in 'mixed').
 - Mechanism: Contiguous memory access vs pointer chasing.
 
 **Part 2 — Scenario Trends (5.4.1)**
+
 - Contrast 'mixed' (narrow gap) vs 'dense_full' (19x Vector degradation).
 - Data: Array stays stable @ 94ns; Vector collapses @ 1,879ns.
 - Link to H1: Indexed layouts prove resilient to market data volume.
 
 **Part 3 — Architectural Mechanisms (5.4.2)**
+
 - Discuss PoolOrderBook's branching penalty (7.36% miss rate) vs Hybrid's hot/cold storage limits.
 - Reasoning: SIMD/branching simplicity beats locality where logic is complex.
 
 **Part 4 — Tail Latency & H2 (5.4.3)**
+
 - Contrast Array's 125ns P99 with Vector's 6,016ns "dense" stall.
 - Link to H2: Determinism of layout yields predictable tail performance.
 
 ### SESSION 5 — Chapter 5: Gateway Mode & H3
+
 **Section:** `\section{Gateway Mode - End-to-End Decomposition}`
+
 - Discuss the "Masking Effect" (99.8%+ latency is Network).
 - Reference Table 5.5: stochastic jitter > engine speed.
 - Validate H3: High-level optimizations irrelevant without kernel-bypass.
