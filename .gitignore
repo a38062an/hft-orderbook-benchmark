@@ -39,3 +39,5 @@ results/
 results/*
 !results/perf/
 !results/perf/**
+!results/hypothesis_testing/
+results/hypothesis_testing/**
