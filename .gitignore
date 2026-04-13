@@ -37,6 +37,7 @@ results/
 # Keep perf evidence artifacts versioned.
 !results/
 results/*
+!results/results.csv
 !results/perf/
 !results/perf/**
 !results/hypothesis_testing/
