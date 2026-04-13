@@ -1,8 +1,141 @@
 \chapter{Conclusions}
+\label{chap:conclusions}
 
 \section{Summary of Contributions}
-\section{Answers to Research Hypotheses}
-\section{Critical Reflection}
-\section{Future Work}
+This dissertation demonstrated the design and implementation of a C++20 exchange
+infrastructure for benchmarking order book data structures. It explored the 
+trade-offs to consider when designing order books as well as the implications 
+of real-world system overheads. The key contributions of this work are as follows:
 
-Return explicitly to each objective and hypothesis from Chapter 1.
+\begin{itemize}
+    \item A modular, extensible C++20 exchange framework with interchangeable
+    order book implementations and a TCP gateway for end-to-end benchmarking.
+    \item A comprehensive benchmarking suite that decomposes latency and
+    throughput across direct and gateway modes, isolating data structure
+    performance from system overheads.
+    \item Empirical evidence on the performance trade-offs of direct indexing
+    versus pointer-based order book strategies, and the limited impact of
+    memory pooling on overall latency.
+    \item A clear systems-level finding that in end-to-end gateway operation,
+    network and transport overheads dominate latency, masking internal data
+    structure differences that are visible in isolated direct mode.
+\end{itemize}
+
+These contributions advance our understanding of how order book design choices interact 
+with system-level factors to influence performance in high frequency trading environments. 
+The modular framework and comprehensive benchmarks provide a foundation for future 
+research and practical exchange design decisions.
+
+\section{Answers to Research Hypotheses}
+In terms of hypotheses \ref{hyp:h1}--\ref{hyp:h3}, the evidence supports the following conclusions:
+
+\paragraph{\ref{hyp:h1}: Direct indexing outperforms pointer-heavy alternatives in isolated mode.}
+\textbf{Status: Supported.}
+
+Direct-mode benchmarks show that the direct-indexed array outperforms alternative
+structures across almost all scenarios, with mean latency around 210 ns.
+Results also indicate that in Hybrid mode, when hot storage is likely to be
+used, it outperforms tree-based structures, further reinforcing \ref{hyp:h1}.
+This is reflected consistently in the direct-mode results
+(Table~\ref{tab:throughput_results} and Table~\ref{tab:direct_mean_latency}).
+
+\paragraph{\ref{hyp:h2}: Memory pooling reduces allocation jitter but does not remove structural complexity costs.}
+\textbf{Status: Supported.}
+
+Results indicate that memory pooling improves performance in
+deep-book scenarios, where Pool outperforms Map in \texttt{sparse\_extreme} and
+\texttt{dense\_full}. At the same time, the pool logic introduces its own
+structural cost in mixed workloads, where branch misprediction and match-path
+complexity increase latency. So pooling is clearly useful, but it is an
+optimisation, not a full solution to data-structure complexity.
+This trade-off is discussed directly in
+Section~\ref{subsec:pool_hybrid_mech}.
+
+
+\paragraph{\ref{hyp:h3}: In end-to-end gateway operation, system overhead masks internal data-structure gains.}
+\textbf{Status: Supported.}
+In gateway mode, network latency and queue latency dominate total
+latency, while engine latency remains very small in comparison. For example, for Array the
+network component is 462,884 ns out of 463,149 ns total, showing that most
+end-to-end cost is outside the matching algorithm itself. This explains why
+differences visible in direct mode become compressed in gateway mode.
+This pattern is captured in Table~\ref{tab:gateway_decomposition}.
+
+\section{Critical Reflection}
+This project provides strong evidence within a bounded experimental
+scope, but should still be interpreted with care.
+
+First, the benchmark setup captures the full software path from gateway to
+engine, and the decomposition methodology gives visibility into
+network latency, queue latency, and engine latency costs. However, the loopback environment does not include physical
+network effects such as switch delay and NIC-level contention, so absolute
+latency should be treated as a lower bound.
+
+Second, the scenario design is robust for comparing relative behaviour across
+implementations, especially for highlighting dense-book stress effects. At the
+same time, synthetic workloads cannot fully reproduce strategic behaviour seen
+in live markets, so claims should remain bounded to the tested scenario family.
+
+Third, the practical implication is that exchange engineers should avoid picking
+data structures from microbenchmarks alone. Direct-mode results are necessary to
+understand algorithmic efficiency, but gateway-mode results are necessary for
+deployment decisions where system overhead dominates.
+
+If this project were repeated, three design choices would be adjusted earlier.
+First, the evaluation plan would include larger run counts from the start to
+support tighter confidence reporting. Second, gateway experiments would include
+an additional host-level networking baseline (for example, alternative socket or
+transport configurations) to separate framework effects from OS-path effects.
+Third, scenario generation would be extended with longer replay windows so that
+steady-state and stress-state behaviour can be contrasted more explicitly.
+
+\section{Limitations}
+\begin{itemize}
+    \item Platform dependency: results were measured on a pinned WSL2/Zen4 host,
+    so absolute numbers may change on other operating-system and CPU stacks.
+    \item Workload realism: scenarios are representative and diverse, but still
+    synthetic, and therefore cannot capture every market microstructure effect.
+    \item Statistical depth: with $n=5$ runs per case, major trends are clear,
+    but confidence analysis would benefit from larger samples.
+    \item Loopback boundary: gateway mode exercises software networking cost but
+    excludes physical network path variability.
+\end{itemize}
+
+\section{Practical Recommendations}
+\begin{itemize}
+    \item Use direct-indexed layouts when the workload is dense and latency
+    critical, because they provide the strongest isolated matching-path
+    performance in this study.
+    \item Treat memory pooling as a targeted optimisation for allocation-heavy
+    scenarios, not as a substitute for efficient structural layout.
+    \item For deployment decisions, prioritise full-path gateway measurements
+    and latency decomposition, since network and queue components can dominate
+    end-to-end behaviour and mask engine-level gains.
+\end{itemize}
+
+\section{Future Work}
+\begin{itemize}
+    \item Integrate kernel-bypass transport (for example DPDK/OpenOnload) to
+    quantify how much gateway masking can be reduced.
+    \item Replay historical market data over long horizons, including stressed
+    periods (for example crash windows and volatility spikes), to evaluate how
+    each implementation behaves over time under realistic flow dynamics
+    \citep{gould2013lob}.
+    \item Increase statistical depth with larger $n$, confidence intervals, and
+    significance testing for tighter claims.
+\end{itemize}
+
+\section{Closing Statement}
+Taken together, the objectives set in Chapter~\ref{chap:introduction} were met:
+the framework enabled fair cross-implementation benchmarking, direct mode and
+gateway mode exposed different bottlenecks, and the decomposition evidence
+showed where end-to-end latency is actually spent. The practical implication is
+that data-structure engineering remains essential for engine efficiency, but
+deployment-level latency improvements require equal attention to transport and
+queueing overhead.
+
+Overall, this dissertation shows that order-book performance is a systems
+problem, not only a data-structure problem. In isolated mode, cache-friendly
+indexing gives clear wins, but in gateway mode transport overhead can dominate
+and mask those gains. The framework and evidence produced here provide a
+practical basis for both future research and real exchange design decisions.

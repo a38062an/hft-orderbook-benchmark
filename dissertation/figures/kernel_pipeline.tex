@@ -1,0 +1,43 @@
+\begin{figure}[htbp]
+    \centering
+    \resizebox{0.92\textwidth}{!}{%
+    \begin{tikzpicture}[
+        node distance=1.5cm,
+        font=\sffamily\small,
+        box/.style={rectangle, draw=black, thick, minimum width=4cm, minimum height=0.8cm, align=center},
+        kernel/.style={box, fill=orange!10},
+        user/.style={box, fill=blue!10},
+        hw/.style={box, fill=gray!20},
+        arrow/.style={->, thick, >=stealth},
+        label/.style={font=\scriptsize\itshape, text=red!80!black}
+    ]
+
+    % Nodes
+    \node[hw] (nic) {Network Interface Card (NIC)};
+    \node[kernel, below=of nic] (dma) {DMA to Ring Buffer};
+    \node[kernel, below=of dma] (irq) {Hard IRQ \& NAPI Poll};
+    \node[kernel, below=of irq] (stack) {\texttt{sk\_buff} Allocation \& TCP/IP Stack};
+    \node[kernel, below=of stack] (socket) {Socket Receive Queue};
+    \node[user,   below=of socket] (app) {User Application (\texttt{recvfrom})};
+
+    % Arrows
+    \draw[arrow] (nic) -- (dma);
+    \draw[arrow] (dma) -- node[right, near start, xshift=0.2cm] {Interrupt} (irq);
+    \draw[arrow] (irq) -- (stack);
+    \draw[arrow] (stack) -- (socket);
+    \draw[arrow] (socket) -- node[left, pos=0.5, xshift=-0.2cm, black] {System Call Buffer Copy} (app);
+
+    % Jitter annotations
+    \draw[<-, color=red] (dma.east) -- +(1,0) node[right, label] {Interrupt Latency};
+    \draw[<-, color=red] (stack.east) -- +(1,0) node[right, label] {Memory Allocation Overhead};
+    \draw[<-, color=red] (socket.south east) to[out=-20, in=20] node[right, label, pos=0.5] {Context Switch Jitter} (app.north east);
+
+    % Braces
+    \draw [decorate, decoration={brace, amplitude=10pt, mirror}, xshift=-0.5cm]
+    (dma.north west) -- (socket.south west) node [black, midway, xshift=-1.5cm, rotate=90, align=center] {Linux Kernel\\Space};
+
+    \end{tikzpicture}%
+    }
+    \caption{The standard Linux kernel network ingress pipeline. A packet must traverse multiple layers of abstraction—including DMA transfers, hardware interrupts, and TCP/IP stack logic—before reaching the application. Each stage, particularly the transition from kernel to user space via system calls, introduces non-deterministic delays that manifest as microsecond-scale jitter in HFT environments.}
+    \label{fig:kernel_network_pipeline}
+\end{figure}

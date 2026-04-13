@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from .constants import BOOK_ORDER_NO_VECTOR, MIDDLE_TIER_BOOKS, REPRESENTATIVE_SCENARIOS
+from .constants import BOOK_ORDER, BOOK_ORDER_NO_VECTOR, MIDDLE_TIER_BOOKS, REPRESENTATIVE_SCENARIOS
 from .data_processing import (
     direct_latency_matrix,
     direct_slowdown_matrix,
@@ -65,6 +65,30 @@ def plot_direct_slowdown_heatmap(direct_dataframe: pd.DataFrame, output_dir: Pat
     plt.ylabel("Scenario")
 
     output_path = output_dir / "direct" / "latency_slowdown_vs_best_heatmap.png"
+    save_figure(output_path)
+    return output_path
+
+
+
+def plot_direct_slowdown_no_vector_heatmap(direct_dataframe: pd.DataFrame, output_dir: Path) -> Path:
+    no_vector_dataframe = filter_books(direct_dataframe, BOOK_ORDER_NO_VECTOR)
+    slowdown_dataframe = slowdown_matrix(no_vector_dataframe)
+
+    plt.figure(figsize=(8.0, 4.6))
+    sns.heatmap(
+        slowdown_dataframe,
+        annot=True,
+        fmt=".2f",
+        cmap="YlOrRd",
+        linewidths=0.3,
+        cbar_kws={"label": "Slowdown vs Scenario Best (Excl. Vector)"},
+        vmin=1.0,
+    )
+    plt.title("Direct Mode Relative Slowdown (Excluding Vector)")
+    plt.xlabel("Order Book")
+    plt.ylabel("Scenario")
+
+    output_path = output_dir / "direct" / "latency_slowdown_no_vector_heatmap.png"
     save_figure(output_path)
     return output_path
 
@@ -141,6 +165,40 @@ def plot_direct_operation_breakdown(direct_dataframe: pd.DataFrame, output_dir: 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     g.savefig(output_path, bbox_inches="tight")
     plt.close(g.fig)
+    return output_path
+
+
+
+def plot_mixed_operation_breakdown(
+    direct_dataframe: pd.DataFrame,
+    output_dir: Path,
+) -> Path:
+    mixed_df = direct_dataframe[direct_dataframe["Scenario"] == "mixed"]
+    mixed_df = filter_books(mixed_df, BOOK_ORDER_NO_VECTOR)
+
+    long_form = mixed_df.melt(
+        id_vars=["Book"],
+        value_vars=["Insert_ns", "Lookup_ns", "Match_ns", "Cancel_ns"],
+        var_name="Operation",
+        value_name="SubOperationLatency_ns",
+    )
+
+    plt.figure(figsize=(7.5, 4.8))
+    sns.barplot(
+        data=long_form,
+        x="Operation",
+        y="SubOperationLatency_ns",
+        hue="Book",
+        hue_order=BOOK_ORDER_NO_VECTOR,
+    )
+
+    plt.title("Mixed Scenario: Operation-Level Latency Breakdown")
+    plt.ylabel("Latency (ns)")
+    plt.xlabel("Operation Type")
+    plt.legend(title="Order Book", loc="upper right")
+
+    output_path = output_dir / "direct" / "mixed_operation_latency_breakdown.png"
+    save_figure(output_path)
     return output_path
 
 
@@ -231,7 +289,10 @@ def plot_gateway_dense_decomposition(gateway_dataframe: pd.DataFrame, output_dir
     if dense_dataframe.empty:
         return None
 
-    dense_dataframe = filter_books(dense_dataframe, BOOK_ORDER_NO_VECTOR)
+    dense_dataframe = filter_books(dense_dataframe, BOOK_ORDER)
+    dense_dataframe["Book"] = pd.Categorical(
+        dense_dataframe["Book"], categories=BOOK_ORDER, ordered=True
+    )
     dense_dataframe = dense_dataframe.sort_values("Book")
     x_positions = range(len(dense_dataframe))
 
@@ -261,10 +322,10 @@ def plot_gateway_dense_decomposition(gateway_dataframe: pd.DataFrame, output_dir
     plt.xticks(x_positions, dense_dataframe["Book"], rotation=20, ha="right")
     plt.ylabel("Latency (ns)")
     plt.xlabel("Order Book")
-    plt.title("Gateway Mode Dense Full Decomposition (Excluding Vector)")
+    plt.title("Gateway Mode Dense Full Decomposition")
     plt.legend(ncol=4)
 
-    output_path = output_dir / "gateway" / "dense_full_latency_decomposition_no_vector.png"
+    output_path = output_dir / "gateway" / "dense_full_latency_decomposition.png"
     save_figure(output_path)
     return output_path
 
@@ -517,8 +578,14 @@ def build_all_figures(
     if not direct_dataframe.empty:
         figure_paths["direct_latency_heatmap"] = plot_direct_latency_heatmap(direct_dataframe, output_dir)
         figure_paths["direct_slowdown_heatmap"] = plot_direct_slowdown_heatmap(direct_dataframe, output_dir)
+        figure_paths["direct_slowdown_no_vector_heatmap"] = plot_direct_slowdown_no_vector_heatmap(
+            direct_dataframe, output_dir
+        )
         figure_paths["direct_tail_ratio"] = plot_direct_tail_ratio(direct_dataframe, output_dir)
         figure_paths["direct_operation_breakdown"] = plot_direct_operation_breakdown(
+            direct_dataframe, output_dir
+        )
+        figure_paths["direct_mixed_operation_breakdown"] = plot_mixed_operation_breakdown(
             direct_dataframe, output_dir
         )
         figure_paths["direct_middle_tier_tradeoff"] = plot_middle_tier_tradeoff_heatmap(

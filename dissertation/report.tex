@@ -7,20 +7,102 @@
 \usepackage{booktabs}
 \usepackage{longtable}
 \usepackage{graphicx}
-\usepackage[hidelinks]{hyperref}
-\usepackage[numbers]{natbib}
+\usepackage{xcolor}
+\usepackage[colorlinks=true, linkcolor=black, citecolor=blue, urlcolor=blue, hypertexnames=false]{hyperref}
+\usepackage[authoryear]{natbib}
 \usepackage{setspace}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{float}
+\usetikzlibrary{shapes.geometric, arrows, positioning, calc, decorations.pathreplacing}
 \geometry{margin=1in}
 \onehalfspacing
+\setlength{\emergencystretch}{2em}
+\hbadness=10000
+\hfuzz=100pt
 
-\title{High-Frequency Trading Order Book Benchmarking in C++20}
-\author{Your Name}
-\date{\today}
+% Custom commands for requirement cross-referencing
+\newcommand{\FR}[1]{\hyperref[fr:#1]{\textcolor{blue}{FR-#1}}}
+\newcommand{\NFR}[1]{\hyperref[nfr:#1]{\textcolor{blue}{NFR-#1}}}
+
+% Professional Colors for Code Snippets
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.96,0.96,0.98}
+\definecolor{codeblue}{rgb}{0.1,0.3,0.7}
+
+% Listings Configuration
+\lstset{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{codeblue}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    frame=single,
+    rulecolor=\color{black!10},
+    framesep=5pt,
+    xleftmargin=10pt,
+    xrightmargin=5pt,
+    language=C++,
+    columns=flexible,
+    mathescape=false,
+    upquote=true,
+    aboveskip=15pt,
+    belowskip=15pt
+}
 
 \begin{document}
 
 \pagenumbering{roman}
-\maketitle
+
+\begin{titlepage}
+    \begin{center}
+        \vspace*{1in}
+        
+        \Huge
+        \textbf{High-Frequency Trading Order Book Benchmarking in C++20}
+        
+        \vspace{2cm}
+        
+        \LARGE
+        \textbf{Anthony Nguyen}\\
+        \vspace{0.5cm}
+        \Large
+        Supervisor: Steve Pettifer
+        
+        \vfill
+        
+        % To embed the logo, place the image file (e.g., uom_logo.gif) in the same directory.
+        % We use just the name "uom_logo" so LaTeX can find the converted version (like .png).
+        \includegraphics[width=0.5\textwidth]{uom_logo}
+        
+        \vfill
+        
+        \Large
+        BSc (Hons) Computer Science\\[0.3cm]
+        Department of Computer Science\\[0.3cm]
+        UNIVERSITY OF MANCHESTER\\
+        
+        \vspace{0.8cm}
+        
+        \large
+        \today
+        
+    \end{center}
+\end{titlepage}
 \tableofcontents
 \listoffigures
 \listoftables
@@ -37,7 +119,7 @@ direct-mode implementation in six of seven scenarios, with mixed-scenario mean
 latency of 210.72 ns and dense-full mean latency of 213.44 ns. In contrast,
 sorted-vector insertion degrades sharply in dense books, reaching 16082.10 ns
 in dense-full direct mode (75.3x slower than array). Gateway-mode latency is
-dominated by network and transport overhead for non-vector rows (median Net
+dominated by network and transport overhead for non-vector rows (median network
 share 98.7\%), which reduces the visible contribution of internal order-book
 differences to end-to-end timing. The evidence supports two bounded
 conclusions. First, data-structure execution path and memory-access behavior
@@ -45,7 +127,7 @@ are the dominant factors when algorithmic work is isolated. Second, in
 end-to-end gateway operation, system-level bottlenecks can mask data-structure
 gains unless transport and parsing overhead are reduced. The project
 contributes a reproducible benchmark harness, scenario-driven workload
-generation, and decomposed Net/Que/Eng timing suitable for future experiments
+generation, and decomposed network/queue/engine timing suitable for future experiments
 on kernel-bypass networking and multi-producer ingestion.
 
 \clearpage
@@ -58,8 +140,11 @@ on kernel-bypass networking and multi-producer ingestion.
 \include{chapters/05_testing_evaluation}
 \include{chapters/06_conclusions}
 
-\bibliographystyle{plainnat}
+\bibliographystyle{apalike}
+{\raggedright
+\sloppy
 \bibliography{references}
+}
 
 \appendix
 \chapter{LockFreeQueue Implementation}
@@ -74,10 +159,17 @@ source artefacts.
 
 \chapter{Matching Engine Timestamp Decomposition}
 This appendix references the matching-engine processing path and timestamp
-decomposition used for Net/Que/Eng breakdown in the evaluation chapter.
+decomposition used for network/queue/engine breakdown in the evaluation chapter.
 
 \chapter{FIX Incremental Parser}
 This appendix references the incremental FIX parser loop used for
 partial-message buffering and checksum boundary detection in the gateway path.
+
+\chapter{PoolOrderBook Match Branching}
+\label{app:pool_branching}
+This appendix references the conditional order-filling and removal logic in the
+\texttt{PoolOrderBook::match} implementation (lines 131--156). Under mixed 
+market workloads with varying order sizes, these branches result in the 
+high misprediction rate (7.36\%) documented in the evaluation.
 
 \end{document}

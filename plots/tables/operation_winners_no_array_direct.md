@@ -2,13 +2,13 @@
 
 | Scenario | Best Add Book | Add Latency (ns) | Best Cancel Book | Cancel Latency (ns) | Best Lookup Book | Lookup Latency (ns) |
 |---|---:|---:|---:|---:|---:|---:|
-| tight_spread | pool | 106.50 | n/a | n/a | pool | 57.00 |
-| fixed_levels | pool | 109.73 | n/a | n/a | map | 55.88 |
-| mixed | pool | 148.20 | pool | 279.82 | pool | 58.32 |
-| high_cancellation | pool | 380.18 | pool | 127.09 | pool | 65.88 |
-| worst_case_fifo | pool | 357.20 | n/a | n/a | map | 64.18 |
-| sparse_extreme | pool | 293.78 | n/a | n/a | pool | 66.42 |
-| dense_full | pool | 421.11 | n/a | n/a | pool | 69.51 |
+| tight_spread | pool | 18.61 | n/a | n/a | pool | 14.95 |
+| fixed_levels | pool | 16.06 | n/a | n/a | hybrid | 12.89 |
+| mixed | pool | 17.49 | vector | 22.34 | hybrid | 12.17 |
+| high_cancellation | pool | 21.36 | pool | 16.42 | pool | 12.35 |
+| worst_case_fifo | pool | 22.44 | n/a | n/a | pool | 12.70 |
+| sparse_extreme | pool | 19.70 | n/a | n/a | pool | 12.37 |
+| dense_full | pool | 23.05 | n/a | n/a | pool | 12.46 |
 
 Notes:
 - Array is excluded to avoid fixed-range/fixed-tick structural bias in this comparison.

@@ -1,0 +1,51 @@
+\begin{figure}[htbp]
+    \centering
+    \resizebox{0.92\textwidth}{!}{%
+    \begin{tikzpicture}[
+        cell/.style={rectangle, draw=black, thick, minimum width=3cm, minimum height=0.6cm, text centered, font=\sffamily},
+        header/.style={cell, fill=gray!20, font=\sffamily\bfseries},
+        askcell/.style={cell, fill=red!10},
+        bidcell/.style={cell, fill=green!10},
+        invisible/.style={minimum width=3cm, minimum height=0.6cm, font=\sffamily\bfseries}
+    ]
+
+        % Ask Side Header
+        \node[header] (AskPrice) at (0,0) {Ask Price};
+        \node[header] (AskSize) at (3.5,0) {Total Size};
+        
+        % Asks (Offer) - Highest price at top, best ask at bottom
+        \node[askcell] (A3_p) at (0,-0.8) {100.03};
+        \node[askcell] (A3_s) at (3.5,-0.8) {50};
+        
+        \node[askcell] (A2_p) at (0,-1.5) {100.02};
+        \node[askcell] (A2_s) at (3.5,-1.5) {120};
+        
+        \node[askcell] (A1_p) at (0,-2.2) {100.01};
+        \node[askcell] (A1_s) at (3.5,-2.2) {400}; \node[right=0.2cm of A1_s, font=\sffamily] {$\leftarrow$ \textbf{Best Ask}};
+
+        % Gap representing the spread
+        \node[invisible, minimum height=0.8cm] (Midpoint) at (1.75,-3.0) {\textit{Spread = 0.02 \quad|\quad Mid-price = 100.00}};
+
+        % Bid Side Header
+        \node[header] (BidPrice) at (0,-3.8) {Bid Price};
+        \node[header] (BidSize) at (3.5,-3.8) {Total Size};
+
+        % Bids - Best bid at top, descending
+        \node[bidcell] (B1_p) at (0,-4.6) {99.99};
+        \node[bidcell] (B1_s) at (3.5,-4.6) {250}; \node[right=0.2cm of B1_s, font=\sffamily] {$\leftarrow$ \textbf{Best Bid}};
+        
+        \node[bidcell] (B2_p) at (0,-5.3) {99.98};
+        \node[bidcell] (B2_s) at (3.5,-5.3) {600};
+        
+        \node[bidcell] (B3_p) at (0,-6.0) {99.97};
+        \node[bidcell] (B3_s) at (3.5,-6.0) {150};
+
+        % Annotations
+        \draw[thick, decoration={brace,amplitude=5pt,mirror}, decorate] (-1.6,-0.5) -- (-1.6,-2.5) node[midway,left=8pt,font=\sffamily,align=center] {Ask \\ (Sellers)};
+        \draw[thick, decoration={brace,amplitude=5pt,mirror}, decorate] (-1.6,-4.3) -- (-1.6,-6.3) node[midway,left=8pt,font=\sffamily,align=center] {Bid \\ (Buyers)};
+
+    \end{tikzpicture}
+    }
+    \caption{A stylized Limit Order Book demonstrating price-time priority grouping. The bid (buyers) and ask (sellers) are separated by the spread, establishing the mid-price.}
+    \label{fig:lob_diagram}
+\end{figure}

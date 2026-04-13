@@ -1,10 +1,219 @@
 \chapter{System Design}
+\label{chap:system_design}
+
+This chapter explores the high-level design of the benchmarking suite. Our 
+system is based on a simulated exchange designed to process trades from 
+multiple concurrent clients. To understand the system from first 
+principles, we have engineered a conventional exchange pipeline mostly from 
+scratch. This multithreaded architecture parses FIX messages, passes them 
+to a custom lock-free queue for thread hand-off, and finally dispatches 
+them to the matching engine. 
+
+While every component in this pipeline contributes to total system latency, 
+the order book is typically the primary computational bottleneck in a 
+matching engine~\citep{gould2013lob}. As the stateful core of the exchange, 
+the order book must maintain price-time priority while processing 
+high-frequency updates, making the choice of data structure the most 
+critical factor for engine scalability~\citep{aldridge2013hft}. For this 
+reason, this report focuses on exploring the performance trade-offs of 
+varied order book layouts. 
+
+When designing a benchmarking suite, it is essential that all measurements 
+are scientific and fair. We maintain this rigour by validating that all 
+components operate with semantic parity, ensuring that latency 
+differences are caused by architectural efficiency rather than logical 
+shortcuts.
+
+\section{Formal Requirements}
+\label{sec:system_formal_requirements}
+To ensure academic rigour and verify that the system performs as intended, 
+we utilise a formal requirements framework. These requirements serve as 
+the analytical foundation for the project and provide the objective 
+success criteria for the performance evaluation in Chapter 5. By 
+establishing these benchmarks early, we ensure that the subsequent 
+analysis of order book implementations is grounded in measurable and 
+verifiable standards.
+
+
+\subsection{Functional Requirements}
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{lp{5cm}p{6.5cm}}
+        \toprule
+        \textbf{ID} & \textbf{Requirement} & \textbf{Testable Criterion} \\
+        \midrule
+        \phantomsection\label{fr:1} FR-1 & Implement five distinct order book data structures & Five implementations present and benchmarkable \\
+        \phantomsection\label{fr:2} FR-2 & Support direct-mode benchmarking isolating engine latency & Direct mode runs without network stack involvement \\
+        \phantomsection\label{fr:3} FR-3 & Support gateway-mode benchmarking with end-to-end FIX protocol overhead & Gateway mode includes TCP, FIX parsing, and queue handoff \\
+        \phantomsection\label{fr:4} FR-4 & Support MPSC contention benchmarking with configurable producer counts & MPSC mode scales across producer configurations \\
+        \phantomsection\label{fr:5} FR-5 & Emit structured CSV output for all benchmark runs & CSV files produced with consistent schema per run \\
+        \phantomsection\label{fr:6} FR-6 & Include correctness test suite verifying semantic parity across implementations & All implementations produce identical outputs for equivalent inputs \\
+        \bottomrule
+    \end{tabular}
+    \caption{Functional Requirements (FR)}
+    \label{tab:functional_requirements}
+\end{table}
+
+\subsection{Non-Functional Requirements}
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{lp{5cm}p{6.5cm}}
+        \toprule
+        \textbf{ID} & \textbf{Requirement} & \textbf{Testable Criterion} \\
+        \midrule
+        \phantomsection\label{nfr:1} NFR-1 & Correctness: semantic parity across all implementations & No variant has special-case logic biasing results \\
+        \phantomsection\label{nfr:2} NFR-2 & Fairness: identical workload parameters across all implementations & Same run count, order count, scenario selection for all books \\
+        \phantomsection\label{nfr:3} NFR-3 & Isolation: direct mode measures only algorithmic/data-structure latency & No transport overhead in direct-mode code path \\
+        \phantomsection\label{nfr:4} NFR-4 & Realism: gateway mode includes network, queue, parsing, and engine latency & End-to-end timing supports dissertation's masking argument \\
+        \phantomsection\label{nfr:5} NFR-5 & Reproducibility: pipeline regenerates canonical dataset without undocumented steps & Fresh run produces consistent artifact structure \\
+        \phantomsection\label{nfr:6} NFR-6 & Statistical rigour: mean, standard deviation, and tail metrics reported & Variance metrics present and consistently derived \\
+        \phantomsection\label{nfr:7} NFR-7 & Performance isolation: CPU pinning and scheduler isolation applied & Pinning policy documented and verified in results \\
+        \phantomsection\label{nfr:8} NFR-8 & Portability discipline: absolute latency claims bounded to WSL2/AMD environment & Relative comparisons defensible; absolute numbers environment-scoped \\
+        \phantomsection\label{nfr:9} NFR-9 & Claim discipline: no measurement overstated beyond evidence & Cache and allocator causality stated as correlation, not proven cause \\
+        \bottomrule
+    \end{tabular}
+    \caption{Non-Functional Requirements (NFR)}
+    \label{tab:non_functional_requirements}
+\end{table}
 
 \section{Design Goals and Constraints}
-\section{High-Level Architecture}
-\section{The \texttt{IOrderBook} Interface}
-\section{Order and Trade Representations}
-\section{Concurrency Strategy}
-\section{Benchmarking Design}
+The primary design goal of this benchmarking suite is to minimise 
+measurement overhead and avoid the `observer effect' (or `Heisenberg 
+effect'), where the instrumentation itself alters the system's performance 
+characteristics~\citep{gregg2013systems}. Ensuring that the act of 
+measuring latency does not significantly inflate the results is essential 
+for maintaining the scientific validity of the data.
 
-Include the architecture figure from docs/architecture and explicitly state the two-mode design rationale (direct for isolation, gateway for end-to-end realism).
+Additionally, the project must navigate the technical constraints of the 
+Linux/WSL2 environment. While this virtualised setup introduces 
+additional jitter and overhead compared to bare-metal hardware, these 
+factors are explicitly documented and accounted for throughout the 
+evaluation. By acknowledging these boundaries, we ensure that our 
+conclusions are grounded in the specific realities of the test 
+environment.
+
+
+
+
+
+\section{High-Level Architecture}
+The exchange is designed as a modular system using the `Ports and 
+Adapters' (Hexagonal) architecture~\citep{cockburn_hexagonal}. This 
+approach isolates the core trading logic from external infrastructure, 
+ensuring that the system's performance characteristics remain 
+deterministic and decoupled from transport or logging overheads.
+
+\subsection{Architectural Pattern: Ports and Adapters}
+In this design, the core \textit{Matching Engine} (\texttt{src/core}) 
+functions as the central "hexagon" containing the domain logic. It remains 
+unaware of whether it is communicating with a real network client or a 
+simulated benchmark feed. Communication with the engine happens 
+through \textit{Ports} - abstract interfaces that define what 
+the engine requires from the outside world.
+
+The most critical port in this system is the \texttt{IOrderBook} interface. 
+By defining a stable API for order insertion, cancellation, and matching, 
+the engine can interact with any data structure implementation (the 
+\textit{Adapters}) without modification. This encapsulation is the 
+foundation of our scientific fairness (\NFR{2}); it allows us to swap 
+an \texttt{ArrayOrderBook} for a \texttt{MapOrderBook} while keeping the 
+surrounding benchmark harness and engine logic identical.
+
+\subsection{System Modules}
+As illustrated in Figure~\ref{fig:hexagonal_architecture}, the system 
+is composed of four primary modules:
+\begin{itemize}
+    \item \textbf{Order Generator}: A driving adapter that generates 
+    synthetic market workloads for the system.
+    \item \textbf{Gateway}: A network-facing adapter that parses FIX 
+    messages and manages the transition between network and engine threads.
+    \item \textbf{Matching Engine}: The core domain logic that processes 
+    the central limit order book.
+    \item \textbf{Telemetry}: A driven adapter responsible for capturing 
+    nanosecond-resolution metrics at each stage of the pipeline.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.92\textwidth}{!}{\input{figures/architecture_diag}}
+    \caption{Data-Flow Overview: Pipeline stages from generation to telemetry.}
+    \label{fig:high_level_architecture}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.92\textwidth}{!}{\input{figures/hexagonal_architecture}}
+    \caption{Hexagonal Architecture (Ports and Adapters): Clear separation between the matching domain and interchangeable adapters.}
+    \label{fig:hexagonal_architecture}
+\end{figure}
+
+\section{The IOrderBook Interface and Polymorphism}
+The core of our modular design is the \texttt{IOrderBook} interface, 
+implemented as a C++ abstract base class (\texttt{src/core/i\_order\_book.hpp}).
+This interface defines the contract that any order book data 
+structure must satisfy to be compatible with the matching engine. It 
+standardises essential operations such as order insertion 
+(\texttt{addOrder}), cancellation (\texttt{cancelOrder}), and the matching 
+logic (\texttt{match}).
+
+Using a polymorphic interface ensures that each implementation is treated 
+as a `black box' by the benchmark harness. This is critical for 
+scientific fairness (\NFR{1}); it prevents the benchmarking logic from 
+using implementation-specific shortcuts and ensures that every data structure 
+is subjected to the exact same call overhead (i.e. the nanosecond-scale 
+latency of virtual method table lookups). Separating the engine's logic 
+from the book's implementation ensures that our results only reflect 
+the efficiency of the data structures being tested.
+
+\section{Benchmarking Design: The Two-Mode Philosophy}
+To validate our hypotheses scientifically, we adopt a dual-mode 
+benchmarking philosophy that separates algorithmic efficiency from 
+overhead. This design is necessary so that our measurements capture 
+both the theoretical potential of our data structures and their relative 
+value in a production-like environment.
+
+The \textbf{Direct Mode} serves as a controlled micro-benchmark. It 
+executes the matching engine logic synchronously within the benchmark 
+thread, bypassing all networking and asynchronous layers. This isolation is 
+essential for uncovering the `pure' performance characteristics of the 
+underlying order book, allowing us to see latency differences that are 
+usually hidden by the surrounding system.
+
+The \textbf{Gateway Mode} provides realism by including the 
+full TCP/IP stack (via loopback), FIX protocol parsing, and the 
+asynchronous hand-off between network and engine threads. Measuring the system 
+in this mode is critical for exploring the \textit{Masking Effect} proposed 
+in Hypothesis~\ref{hyp:h3}. As we will evaluate in Chapter 5, the
+constant-time overhead of these networking layers
+makes unclear the relative performance advantages of faster data structures. 
+By designing our benchmark suite with both modes, we can differentiate 
+between a structure's peak efficiency and its practical impact 
+on end-to-end latency.
+
+\section{Concurrency and Threading Strategy}
+To maintain low latency, the system must separate high-latency I/O 
+operations - such as network packet polling, TCP/IP stack traversal, and 
+FIX message parsing - from the core matching engine. This multi-threaded 
+architecture prevents slower network components from blocking the execution 
+of trades, which is a standard pattern for high-performance sequence 
+processing in industrial matching engines~\citep{thompson2011disruptor}.
+
+At the core of the concurrency strategy is the \textbf{Producer-Consumer} 
+hand-off. The Gateway thread (Producer) handles the I/O operations 
+described above and pushes parsed orders into a lock-free queue, while the 
+Matching Engine thread (Consumer) pulls and executes them. For the 
+standard gateway mode, we employ a \textbf{Single-Producer Single-Consumer 
+(SPSC)} queue, which provides wait-free properties for the engine. In 
+scenarios with multiple concurrent clients, the system can swap this for a 
+Multi-Producer Multi-Consumer (MPMC) adapter from the \texttt{moodycamel} 
+library.
+
+To ensure deterministic performance, we use \textbf{CPU Pinning} (Thread 
+Affinity). By pinning the engine thread to a specific physical core, we 
+prevent the operating system from migrating the process across different 
+CPUs. This elimination of context-switching jitter and cache-migration 
+overhead is vital for mitigating the \textit{Observer Effect}; it ensures 
+that our measurements represent 'bare-metal' performance as closely as 
+possible within a Linux environment.

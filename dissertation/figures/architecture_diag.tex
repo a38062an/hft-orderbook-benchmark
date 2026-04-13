@@ -1,0 +1,28 @@
+\begin{tikzpicture}[
+    node distance=2cm, 
+    auto,
+    block/.style={rectangle, draw, fill=blue!10, text width=7.5em, text centered, rounded corners, minimum height=3em},
+    line/.style={draw, -latex'},
+    interface/.style={draw, diamond, fill=green!10, text width=6.5em, text centered, inner sep=0pt}
+]
+
+    % Nodes
+    \node [block] (gen) {Order Generator};
+    \node [block, below of=gen, xshift=-3cm] (direct) {Direct Benchmark};
+    \node [block, below of=gen, xshift=3cm] (client) {Mock Client (Gateway)};
+    \node [block, below=1.5cm of client] (gateway) {TCP Gateway (Server)};
+    \node [interface, below of=gateway, xshift=-3cm] (iface) {\texttt{IOrderBook}};
+    \node [block, below of=iface] (book) {Implementation (e.g. Array)};
+    \node [block, right=2cm of book] (telemetry) {Metric Collection};
+
+    % Paths
+    \path [line] (gen) -- (direct);
+    \path [line] (gen) -- (client);
+    \path [line] (client) -- node[font=\scriptsize]{FIX/TCP} (gateway);
+    \path [line] (direct) |- (iface);
+    \path [line] (gateway) -- (iface);
+    \path [line] (iface) -- (book);
+    \path [line] (book) -- (telemetry);
+    \path [line] (gateway) -| (telemetry);
+
+\end{tikzpicture}

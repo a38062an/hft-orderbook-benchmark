@@ -12,6 +12,7 @@ This directory is the working area for dissertation writing and evidence notes i
 
 ## Evidence And Viva Resources (Start Here)
 
+- [DISSERTATION_MASTERPLAN.md](file:///Users/anthonynguyen/Projects/hft-orderbook-benchmark/dissertation/DISSERTATION_MASTERPLAN.md): **Masterplan & Authorship/Tooling Guidelines**
 - `ERROR_LOG.md`: master list of issues, fixes, and remaining sub-gaps
 - `results_analysis.md`: canonical findings and mechanism addendum
 - `MEASUREMENT_COOKBOOK.md`: reproducible measurement workflow and caveats

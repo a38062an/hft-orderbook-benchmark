@@ -1,0 +1,43 @@
+\begin{tikzpicture}[
+    node distance=3.5cm,
+    block/.style={rectangle, draw, fill=blue!10, text width=7em, text centered, rounded corners, minimum height=3em, font=\scriptsize},
+    port/.style={draw, fill=green!10, minimum width=2.5cm, font=\bfseries\scriptsize},
+    hex/.style={draw, regular polygon, regular polygon sides=6, minimum size=6cm, fill=gray!2, thick}
+]
+
+    % The Hexagon (Core Domain)
+    \node [hex] (hexagon) at (0,0) {};
+    \node [font=\bfseries] at (0,1.2) {Matching Engine};
+    \node [font=\scriptsize, text width=3.5cm, align=center] at (0,0.6) {Core Trading Domain};
+    \node [font=\tiny\itshape, text width=3.5cm, align=center, gray] at (0,0.2) {(\texttt{src/core})};
+
+    % Ports (Positioned on the edges of the hexagon logic)
+    \node [port, fill=green!15] (input_port) at (-2.6, -0.2) {Driving Port};
+    \node [port, fill=yellow!15] (output_port) at (2.6, -0.2) {Driven Port};
+    \node [port, fill=orange!15] (lob_port) at (0, -2.4) {IOrderBook Port};
+
+    % Adapters (Outside Hexagon - clear separation)
+    
+    % Driving Adapters (Inputs)
+    \node [block, left=1.2cm of input_port, yshift=1cm] (gen) {\textbf{Order Generator}\\(Scenario Feed)};
+    \node [block, left=1.2cm of input_port, yshift=-1cm] (gw) {\textbf{TCP Gateway}\\(FIX/TCP)};
+
+    % Driven Adapters (Outputs)
+    \node [block, right=1.2cm of output_port, yshift=1cm] (tele) {\textbf{Telemetry Suite}\\(RDTSC Timestamps)};
+    \node [block, right=1.2cm of output_port, yshift=-1cm] (csv) {\textbf{CSV Exporter}\\(Metrics Persistence)};
+
+    % The Interchangeable Component
+    \node [block, below=1cm of lob_port] (lob_impl) {\textbf{Data Structure Adapter}\\(Array, Map, Pool, etc.)};
+
+    % Connecting Adapters to Ports
+    \draw [thick, <->] (gen) -- (input_port);
+    \draw [thick, <->] (gw) -- (input_port);
+    \draw [thick, <->] (tele) -- (output_port);
+    \draw [thick, <->] (csv) -- (output_port);
+    \draw [thick, ->] (lob_port) -- (lob_impl);
+
+    % Boundary Labels
+    \node [font=\tiny\itshape, gray] at (-4, 2.5) {External Actors};
+    \node [font=\tiny\itshape, gray] at (4, 2.5) {Infrastructure};
+
+\end{tikzpicture}

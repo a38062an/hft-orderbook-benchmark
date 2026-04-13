@@ -1,13 +1,35 @@
+\newcounter{hyp}
+\renewcommand{\thehyp}{H\arabic{hyp}}
+
 \section*{Refined Research Hypotheses}
 
-\textbf{H1 (Ordering Structure and Locality).} Index-oriented order-book layouts yield materially lower direct-mode latency than tree-based and sorted-vector designs across most scenarios, with cache behavior as a contributing (not sole) mechanism.
+\noindent\textbf{\refstepcounter{hyp}\thehyp\label{hyp:h1} (Data Structure and Cache Locality).} 
+Order books that use index-based layouts (like arrays) will be significantly faster 
+than search trees or sorted vectors. This advantage is primarily driven by 
+improved CPU cache behavior during high-frequency updates.
 
-\textbf{Acceptance criteria:} array leads direct-mode mean latency in most scenarios; dense-full gap versus vector remains order-of-magnitude; perf evidence is directionally consistent with higher memory-access pressure in slower variants.
+\medskip
+\noindent\textbf{Acceptance criteria:} The array implementation shows the lowest mean 
+latency in direct mode across most scenarios, and performance counters show 
+lower memory-access pressure compared to others.
 
-\textbf{H2 (Allocation Strategy in Isolation).} Memory-pooling benefits are implementation- and workload-dependent; pooling does not remove ordering-structure bottlenecks.
+\bigskip
+\noindent\textbf{\refstepcounter{hyp}\thehyp\label{hyp:h2} (Memory Allocation Limits).} 
+While memory pooling can reduce specific allocation costs, it will not overcome 
+the fundamental performance bottlenecks of a slow data structure.
 
-\textbf{Acceptance criteria:} pool improves over map only in selected scenarios from the canonical dataset; pool does not approach array where traversal dominates; strong allocator-causality requires dedicated allocation instrumentation.
+\medskip
+\noindent\textbf{Acceptance criteria:} The pool implementation only shows marginal 
+gains over the standard map; it does not reach the performance levels of the 
+array where sequential searching is the main bottleneck.
 
-\textbf{H3 (System-Level Masking).} In gateway mode, network and queue components dominate end-to-end latency, reducing the practical impact of engine-internal data-structure differences except in queue-amplification failure cases.
+\bigskip
+\noindent\textbf{\refstepcounter{hyp}\thehyp\label{hyp:h3} (System-Level Masking).} 
+In a networked (gateway) environment, the overhead of the network and system 
+queues will hide most performance differences between order books, except in 
+cases where a slow engine causes a systemic backlog.
 
-\textbf{Acceptance criteria:} Network (Net) plus Queue (Que) dominates Engine (Eng) in 34 of 35 non-vector rows; vector dense-full is a clear boundary case showing queue-amplification failure under sustained dense insertion.
+\medskip
+\noindent\textbf{Acceptance criteria:} For most implementations, the network 
+delay accounts for over 98\% of total latency; however, the vector implementation 
+in high-volume scenarios shows a catastrophic "queue backlog" failure.

@@ -1,19 +1,446 @@
 \chapter{Background}
+\label{chap:background}
 
 \section{High-Frequency Trading and the Limit Order Book}
+
+High-Frequency Trading (HFT) is a specialized form of algorithmic trading that 
+executes orders at millisecond or microsecond timescales. 
+HFT strategies are characterized by high order-to-trade ratios, exceedingly 
+short holding periods, and a reliance on co-located servers running directly 
+adjacent to exchange matching engines~\citep{aldridge2013hft}. 
+Leading proprietary trading firms, such as Optiver and Citadel Securities, secure 
+direct market data feeds to bypass the latency overhead of standard retail brokers. 
+These firms leverage their ultra-low latency infrastructure to execute a variety 
+of latency-sensitive strategies~\citep{menkveld2013hft}. 
+This market-design and speed interaction is also synthesised at the overall
+market-structure level by~\citet{ohara2015hfmicrostructure}.
+This includes spread capture (acting as a market maker by buying at the bid and 
+selling at the ask), avoiding adverse selection (canceling stale quotes before 
+they are traded against by faster participants), and statistical arbitrage 
+(exploiting fleeting price discrepancies across multiple exchange venues).
+As \citet{avellaneda2008hftlob} formalise, these strategies depend directly on
+how quickly the limit order book can be updated and acted upon, because even
+small delays can erode spread capture and increase adverse-selection risk.
+
+A core technological component of this ecosystem is the Limit Order Book (LOB), 
+illustrated in Figure~\ref{fig:lob_diagram}. 
+The LOB is a centralized electronic record of all active limit orders - instructions 
+to buy or sell a specific quantity of an asset at a specified price or 
+better~\citep{gould2013lob}. 
+These orders are grouped by price levels and divided into two sides: the 
+\textit{bid} (buyers) and the \textit{ask} or \textit{offer} (sellers). 
+The highest price a buyer is willing to pay is the best bid, while the lowest 
+price a seller will accept is the best ask. 
+The numerical difference between these two values is known as the spread 
+(visually separating the two sides in Figure~\ref{fig:lob_diagram}), which 
+acts as a primary indicator of market liquidity and volatility. 
+The midpoint between the best bid and best ask provides a theoretical ``fair value'' 
+for the asset at any given microsecond, while strategic order submission and
+cancellation behaviour that drives spread and depth evolution is formalised by
+\citet{rosu2009dynamiclob}.
+
+\input{figures/lob_diagram.tex}
+\vspace{1em}
+
+While the official limit order book is maintained by the exchange matching engine, 
+trading firms are responsible for reconstructing their own internal "shadow" books. 
+Exchanges broadcast market events via raw binary protocols like ITCH or FIX, and 
+quant firms must rapidly parse these feeds to rebuild the current book state in 
+their own local memory. 
+The performance of an HFT algorithm depends entirely on how quickly this internal 
+shadow book can process events, making the underlying data structures and 
+software architecture absolutely critical.
+
 \section{Hardware Architecture}
-Cycle and nanosecond examples in this report are machine-specific
-approximations from the benchmark environment and are used as
-order-of-magnitude explanatory tools rather than universal constants across
-architectures, compilers, and operating systems. The evaluation chapter
-therefore prioritizes within-environment relative comparisons over
-cross-platform absolute value comparisons.
+
+To achieve true ultra-low latency, trading systems must be designed to cater 
+directly to the physical realities of the underlying microprocessor. 
+This approach is widely known as Mechanical Sympathy~\citep{fowler2011lmax}. 
+The core philosophy dictates that understanding the hardware architecture of a 
+machine enables software to operate in harmony with it, unlocking maximum 
+potential throughput. 
+Rather than treating the CPU as an abstract resource, HFT software treats hardware 
+features - such as cache hierarchies and processor pipelines - as first-class 
+design constraints.
+\subsection{Cache Hierarchy and Memory Access}
+
+The cache is arguably the most critical hardware component to optimise for when 
+striving for ultra-low latency. 
+It relies on the concepts of temporal and spatial locality to reduce memory operation times. 
+Temporal locality dictates that recently accessed memory locations are highly 
+likely to be accessed again in the near future. 
+Spatial locality assumes that memory locations physically adjacent to a recently 
+accessed address will also be needed soon. 
+This behavior closely aligns with the Pareto principle, where 80\% of memory 
+accesses are typically concentrated within just 20\% of an application's data. 
+
+To capitalize on this, the memory subsystem is organized into a rigid hierarchical 
+structure, as visualized in Figure~\ref{fig:cache_hierarchy}. 
+The L1 cache is the smallest storage layer but resides physically closest to the 
+processor core, offering extremely fast access times of roughly 1 - 2 nanoseconds. 
+Subsequent caches (L2 and L3) are progressively larger but sit further away, 
+incurring proportionately longer fetch times. 
+At the bottom of this hierarchy lies the main system memory (RAM). 
+Fetching data from main memory is significantly slower relative to the cache, 
+routinely taking over 100 nanoseconds and stalling the CPU pipeline entirely
+~\citep{patterson2013computer}.
+
+When the CPU fetches data from memory, it does not retrieve individual bytes; 
+instead, it loads contiguous blocks known as \textit{cache lines} (typically 64 bytes). 
+This mechanism perfectly leverages spatial locality, ensuring that contiguous 
+data structures - like flat arrays - can be sequentially processed with minimal misses. 
+Conversely, non-contiguous allocations (such as pointer chasing in tree structures) 
+break spatial locality, forcing the CPU to continuously stall while waiting for 
+slow main memory fetches.
+
+\input{figures/cache_hierarchy.tex}
+\vspace{1em}
+\subsection{Branch Prediction}
+Modern CPUs process computation through a specific sequence of stages known as 
+the instruction pipeline, conceptualized in Figure~\ref{fig:pipeline_flush}. 
+While architectures vary, a classic pipeline consists of four fundamental stages: 
+Fetch, Decode, Execute, and Write-back~\citep{patterson2013computer}. 
+When the CPU encounters a conditional branch (an \texttt{if}-\texttt{else} statement) 
+during the Fetch phase, it does not actually know which path to take until the 
+Execute phase resolves the condition. 
+At this decision point, the CPU has two choices: wait for the execution to finish, 
+or guess the outcome. 
+Waiting would stall the pipeline completely, wasting upward of 15 to 20 clock 
+cycles while the CPU sits idle doing nothing. 
+
+To avoid this massive waste of computational time, CPUs rely on a mechanism 
+called a branch predictor. 
+Instead of waiting, the branch predictor guesses which path the program will take 
+and immediately begins speculatively fetching and decoding those instructions. 
+If the guess is correct, execution continues seamlessly with zero wasted cycles. 
+However, if the predictor guesses incorrectly, the CPU must flush all the 
+speculative, half-finished work from the pipeline and restart fetching from the 
+correct address. 
+This pipeline flush incurs a severe penalty, typically costing modern architectures 
+like the AMD Zen 4 between 15 and 20 cycles of completely lost time~\citep{fog_microarchitecture}. 
+
+Modern predictors, such as the TAGE (TAgged GEometric) or perceptron-based 
+predictors built into current AMD and Intel chips, are incredibly sophisticated 
+and routinely achieve over 95\% accuracy~\citep{seznec2006case}. 
+Mathematically, the advantage is clear: assuming a 15-cycle misprediction penalty, 
+a 95\% accurate predictor yields an average penalty of just $0.75$ cycles per branch 
+($0.95 \times 0 + 0.05 \times 15$), vastly outperforming a strategy of always 
+stalling for 15 cycles. 
+
+\input{figures/pipeline_flush.tex}
+\vspace{1em}
+
+However, despite this impressive average-case mathematical advantage, unpredictable 
+branches are highly detrimental to ultra-low latency systems. 
+In HFT, average performance is secondary to worst-case tail latency (the outermost 
+response-time percentiles, such as the 99.9th percentile, which dictate the absolute 
+maximum time a system takes to react under stress)~\citep{dean2013tail}. 
+If complex business logic (such as an unpredictable conditional order fill) resides 
+on the critical path, the inevitable 5\% of mispredictions will cause unpredictable, 
+nanosecond-scale execution spikes. 
+Removing unpredictable branches entirely is therefore a primary engineering goal 
+to ensure deterministic, low-variance execution.
 
 \section{Data Structures for Order Books}
-\section{Lock-Free Concurrent Queues}
-\section{Network Protocols in HFT}
-\section{Related Work}
 
-This chapter should be the deepest theory chapter. Prioritize cache hierarchy,
-pointer indirection cost, cache-line behavior, false sharing, and memory
-ordering because these directly explain Chapter 5 measurements.
+The choice of underlying data structure fundamentally dictates the baseline 
+performance of any limit order book. 
+While theoretical algorithmic complexity provides a mathematical framework, the 
+physical realities of modern hardware - namely the cache hierarchy and branch 
+predictor - often subvert classical computer science assumptions.
+
+\subsection{Tree-Based Implementations}
+Historically, many order books have been implemented using tree-based structures 
+such as Red-Black trees (often conceptually exposed as \texttt{std::map} in C++) 
+to manage price levels. 
+These structures offer a theoretical $\mathcal{O}(\log N)$ time complexity for 
+insertions, deletions, and lookups. 
+Their primary advantage is implementation simplicity, as a map intuitively models 
+the domain of a limit order book by directly associating a price level (the key) 
+with a queue of resident orders (the value). 
+Furthermore, trees dynamically and gracefully handle massive, arbitrary price leaps 
+without requiring predefined price boundaries. 
+However, tree nodes are invariably allocated individually on the dynamic heap. 
+As the order book processes thousands of intertwined updates, these nodes become 
+fragmented across disparate locations in main memory. 
+Consequently, traversing a tree to find a specific price level results in rapid, 
+unpredictable pointer chasing. 
+Each pointer dereference frequently triggers a cache miss, forcing the CPU to 
+repeatedly stall while waiting for main memory fetches.
+
+\subsection{Flat Array Structures}
+To explicitly combat heap fragmentation, modern HFT architectures favor contiguous, 
+flat structures such as pre-allocated arrays or vectors. 
+Although inserting an element into a sorted array incurs an $\mathcal{O}(N)$ worst-case 
+complexity (due to shifting elements to maintain chronological order), this metric 
+is theoretically inferior to a tree's $\mathcal{O}(\log N)$. 
+However, because arrays are strictly contiguous in memory, traversing them allows 
+the CPU's hardware prefetcher to eagerly load subsequent elements into the L1 
+cache before they are even requested~\citep{patterson2013computer}. 
+For the relatively small, localized working sets typical of an active limit order 
+book, the sheer speed of contiguous localized memory scans vastly outweighs the 
+algorithmic overhead. 
+In practice, an $\mathcal{O}(N)$ cache-friendly array scan routinely outperforms 
+an $\mathcal{O}(\log N)$ tree traversal for latency-critical workloads. 
+The severe trade-off for this speed is architectural rigidity: to achieve true 
+$\mathcal{O}(1)$ direct array indexing based on price, the book must strictly map 
+discrete \textit{fixed-tick} price intervals to precise internal array offsets, 
+sacrificing the dynamic flexibility of a tree.
+
+\subsection{Memory Pooling}
+
+The final structural consideration is how memory is allocated during live trading. 
+Standard dynamic allocation functions like \texttt{std::malloc} or the \texttt{new} 
+operator require the operating system to search for free heap space and occasionally 
+request more memory pages from the kernel. 
+This process requires context switching and is inherently non-deterministic. 
+Executing a dynamic allocation on the critical trading path is therefore fatal to 
+predictability because it randomly introduces severe microsecond-scale execution spikes. 
+
+\input{figures/memory_pool.tex}
+
+As illustrated in Figure~\ref{fig:memory_pool}, to bypass the operating system 
+entirely during the trading day, high-performance systems use Memory Pools - 
+large contiguous blocks of memory allocated entirely during system startup. 
+Typically, this is achieved by instructing the OS to persistently map a massive, 
+pre-sized memory region (commonly via the POSIX \texttt{mmap} system call) capable 
+of securely holding millions of queued objects without exhausting system bounds~\citep{love2013linux}. 
+At runtime, inserting a new order simply claims a pre-allocated object from the 
+local pool via a fast pointer bump, guaranteeing deterministic, $\mathcal{O}(1)$ 
+nanosecond execution. 
+
+From a software engineering perspective, this profound architectural change is 
+encapsulated behind standard interfaces. The memory pool acts as a drop-in 
+replacement, exposing the same high-level API methods (e.g., \texttt{insert}, 
+\texttt{erase}) as a traditional \texttt{std::map}, allowing the trading 
+engine to remain agnostic to the underlying memory mechanics. 
+This, however, shifts the burden entirely onto the developer, mandating manual 
+capacity management and the implementation of custom logic to handle aggressive, 
+unforeseen out-of-memory pool exhaustions.
+
+\vspace{1em}
+
+\section{Lock-Free Concurrent Queues}
+
+\subsection{Exchange Architecture and Queue Modelling}
+In financial markets, trading firms transmit orders to exchanges 
+across high-speed optical networks.
+Upon ingress, an exchange must safely and deterministically sequence 
+these concurrent, intertwining arriving messages to enforce 
+absolute chronological fairness. 
+Physical exchanges achieve this sequencing via hardware - performing 
+nanosecond packet timestamping directly on the ingress Network 
+Interface Card (NIC) before funneling messages through a 
+hardware-level arbiter~\citep{harrisequity}. 
+However, to stress-test the isolated performance algorithms 
+of the matching engine without requiring proprietary networking hardware, 
+our benchmark methodology strictly models this exchange boundary 
+as a system of concurrent software queues. 
+Network-facing threads act as producers that push validated 
+messages into a gateway queue.
+The matching engine acts as the sole consumer, 
+polling the queue to execute orders sequentially.
+
+\input{figures/network_funnel.tex}
+
+\subsection{SPSC and MPMC Implementations}
+To evaluate this hand-off boundary, 
+the architecture must forbid the use of operating-system locks. 
+For a 1-to-1 thread mapping (one network thread, one matching engine), 
+a custom Single-Producer Single-Consumer (SPSC) ring buffer 
+is the natural model. 
+As illustrated in Figure~\ref{fig:spsc_queue}, an SPSC queue coordinates 
+thread access using two entirely independent atomic variables: 
+a \textit{Head} index pushed exclusively by the producer, 
+and a \textit{Tail} index strictly advanced by the consumer. 
+
+\input{figures/spsc_queue.tex}
+
+To validate gateway scalability against concurrent trading clients, 
+the benchmarking architecture must support Many-to-One messaging. 
+For multi-client configurations, the system integrates 
+\texttt{moodycamel::ConcurrentQueue}~\citep{moodycamel_concurrentqueue}. 
+This Multi-Producer Multi-Consumer (MPMC) structure allows the 
+evaluation suite to simulate gateway contention from multiple 
+concurrent threads and observe how throughput scales with producer count.
+
+\input{figures/mpmc_contention.tex}
+
+\subsection{Atomic Operations and Cache Coherence}
+Lock-free queues remove standard mutual exclusion locks (e.g., \texttt{std::mutex}) 
+to avoid the risk of threads being put to sleep by the operating system. 
+By eliminating context switching, they improve determinism and reduce latency 
+spikes during high contention. Instead, they rely on atomic machine 
+instructions, which allow a core to update a variable without 
+relinquishing the CPU.
+
+However, writing to an atomic variable requires a core to obtain exclusive 
+ownership of the memory location. This triggers the hardware's 
+\textit{MESI} protocol~\citep{patterson2013computer}, which forces all other 
+cores to invalidate their local cache copies. 
+Communication across the CPU bus to synchronize these states is 
+orders of magnitude slower than a local L1 cache access.
+
+Performance is further degraded by \textit{false sharing}. This occurs when 
+unrelated variables—such as the producer's \textit{Head} index and the 
+consumer's \textit{Tail} index—accidentally occupy the same 64-byte 
+hardware cache line. Because the CPU manages memory in these 64-byte blocks, 
+cores will constantly invalidate each other's cache even though they 
+are updating different indices.
+
+To prevent this, high-performance implementations use padding and 
+C++20 alignment specifiers to ensure each index resides on its own 
+unique cache line, as demonstrated in the following snippet:
+
+\begin{lstlisting}[language=C++, basicstyle=\small\ttfamily, frame=single, keywordstyle=\color{blue}]
+struct SPSCQueue {
+    // Force separation into different 64-byte cache lines
+    alignas(64) std::atomic<size_t> head; // Pushed by Producer
+    alignas(64) std::atomic<size_t> tail; // Advanced by Consumer
+};
+\end{lstlisting}
+
+By physically separating these atomic variables, we ensure that the 
+matching engine can poll the tail index without being slowed down by 
+the producer's updates to the head index. 
+This spatial management is a prerequisite for scaling lock-free 
+performance on multi-core hardware. 
+
+
+The trading industry employs a diverse array of communication protocols, 
+optimised for specific trade-offs between flexibility and performance. 
+These range from flexible, text-based encodings to rigid, dense 
+binary formats. In all cases, these protocols prioritise data integrity, 
+incorporating mandatory checksums and sequence numbers to 
+ensure orders are recovered and reconciled during 
+network instability~\citep{fix42_spec}.
+This protocol-level focus is directly relevant in low-latency markets, where
+high rates of order submission and cancellation increase message volume. In these cases
+latency from network receive, protocol parsing, and queue waiting becomes a
+significant part of end-to-end execution time~\citep{hasbrouck2013lowlatency}.
+
+In our exchange implementation, we use the Financial Information eXchange 
+(FIX) protocol, the global standard for order routing. 
+FIX is a session-based protocol communicated over TCP/IP 
+to ensure reliable, ordered delivery of market messages. 
+It employs a tag-value encoding scheme where each field is represented 
+by a unique numeric tag, an equals sign, and the field's value, as 
+illustrated in Figure~\ref{fig:fix_message_structure}.
+
+\input{figures/fix_structure.tex}
+
+As shown in Figure~\ref{fig:fix_message_structure}, each field is delimited 
+by the \texttt{SOH} (Start of Header, ASCII \texttt{0x01}) 
+character. 
+The protocol includes a mandatory \textit{Standard Header} containing 
+the message type (Tag 35), a \textit{Message Body} containing order 
+details (e.g., Symbol, Price, Quantity), and a \textit{Standard Trailer} 
+containing a modulo-256 checksum (Tag 10). 
+While the tag-value format is highly extensible and human-readable, 
+parsing these strings necessitates repeated branching and integer 
+conversions, making it significantly slower than modern binary 
+encodings like Simple Binary Encoding (SBE)~\citep{dean2013tail}.
+
+\subsection{The Standard Linux Network Stack}
+When a host receives a FIX message encapsulated within 
+a TCP/IP packet, it must traverse the standard Linux kernel networking 
+stack. This journey, visualised in Figure~\ref{fig:kernel_network_pipeline}, 
+is a rigid, multi-stage pipeline designed for throughput and safety rather 
+than deterministic latency.
+
+\input{figures/kernel_pipeline.tex}
+
+Upon arrival at the Network Interface Card (NIC), the packet is 
+written via Direct Memory Access (DMA) to a ring buffer in system memory. 
+The NIC then triggers a hardware interrupt (Hard IRQ), forcing the 
+CPU to pause its current task and branch to the kernel's interrupt 
+handler. 
+The kernel then switches to a Software Interrupt (SoftIRQ) 
+context via the NAPI (New API) polling mechanism to drain the ring 
+buffer, as detailed by~\citet{love_kernel}. 
+The kernel allocates an \texttt{sk\_buff} data structure 
+to wrap the packet, performs housekeeping and routing (IP layer), 
+and eventually appends the data to the socket's receive queue.
+
+The User Application must issue a system call, such as 
+\texttt{recvfrom}, to retrieve the data. This triggers an 
+expensive \textit{context switch} from User Space to Kernel Space, 
+where the kernel copies the data from its internal buffer to the 
+application memory. 
+Because the kernel is responsible for scheduling thousands of unrelated 
+tasks across the CPU, a packet may sit in the socket queue for 
+unpredictable durations if the kernel is busy with book-keeping or 
+other interrupts. 
+This accumulation of interrupts, memory allocations, and context 
+switches is the fundamental source of the microsecond-scale 
+\textit{jitter} (latency variance) that plagues standard network 
+sockets in HFT.
+
+\subsection{Kernel-Bypass Networking}
+To mitigate the systemic non-determinism of the Linux kernel, 
+trading firms employ kernel-bypass technologies. 
+Kernel-bypass is an architectural shift that allows the user-space 
+application to talk directly to the NIC hardware, circumventing 
+the OS networking stack, as compared in 
+Figure~\ref{fig:kernel_bypass_comparison}.
+
+\input{figures/kernel_bypass.tex}
+
+By using specialised libraries such as the Data Plane Development 
+Kit (DPDK) or Solarflare's OpenOnload~\citep{redhat2012_openonload}, 
+the application takes ownership of the NIC's hardware 
+resources. 
+Instead of waiting for interrupts, a dedicated CPU core is 
+frequently assigned to "spin" (poll) the NIC's memory-mapped 
+ring buffer in a continuous loop. 
+This achieves \textit{Zero-Copy} delivery, where packets are read 
+directly into application memory without kernel intervention or 
+system calls. 
+This removal of the OS bottleneck ensures network latency is 
+consistent and deterministic, an essential prerequisite for 
+validating the performance differences of 
+order-book data structures which would otherwise be masked by 
+kernel jitter.
+
+\section{Related Work}
+Prior literature can be grouped into market-microstructure theory,
+systems-design practice, and performance-engineering methodology, each with
+different strengths and blind spots.
+
+Market-microstructure sources establish why order books matter economically.
+\citet{harrisequity}, \citet{aldridge2013hft}, and \citet{menkveld2013hft}
+explain liquidity formation, adverse selection, and the strategic role of fast
+execution. \citet{gould2013lob} provides a broad empirical and modelling survey
+of limit-order-book dynamics. However, these works are not primarily designed as
+implementation-level benchmarking studies, so they offer limited guidance on how
+specific in-memory data-structure choices affect nanosecond-scale matching-path
+latency.
+Recent exchange-scale evidence by \citet{aquilina2022armsrace} further shows that
+small latency advantages can have economically significant effects.
+
+Systems-oriented sources describe low-latency architectural patterns but are
+less controlled from an academic benchmarking perspective. The LMAX work
+\citep{fowler2011lmax,thompson2011disruptor} demonstrates the practical value
+of single-writer flows, bounded queues, and cache-aware design. Library-level
+artefacts such as moodycamel \citep{moodycamel_concurrentqueue} show strong
+queue throughput under synthetic conditions, but they do not by themselves
+establish end-to-end exchange latency behaviour across heterogeneous order-book
+implementations. In other words, they validate components, not full pipeline
+trade-offs.
+
+Performance-methodology references provide the measurement principles needed to
+connect these domains. \citet{gregg2013systems} and \citet{dean2013tail}
+emphasise observer-effect control, percentile-aware reporting, and bottleneck
+localisation rather than relying on single aggregate means. This is directly
+relevant to HFT benchmarking, where tail behaviour and queueing effects can
+change engineering decisions even when average latency appears similar.
+
+The main gap is therefore not a lack of discussion on HFT speed, but a lack
+of reproducible, decomposition-driven comparisons that evaluate both
+algorithmic and end-to-end effects in one framework. Existing literature either
+focuses on financial behaviour without implementation granularity, or on
+low-latency engineering patterns without controlled cross-structure comparison
+in a unified exchange-style pipeline. This dissertation addresses that gap by
+benchmarking five order-book designs under semantically equivalent workloads in
+both direct mode and gateway mode, then decomposing network, queue, and engine
+latency to identify where masking effects occur.

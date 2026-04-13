@@ -1,0 +1,34 @@
+\begin{tikzpicture}[
+    node distance=1.5cm and 2cm,
+    process/.style={rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=blue!10},
+    decision/.style={diamond, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=yellow!20},
+    expensive/.style={rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=red, fill=red!10, line width=1pt},
+    arrow/.style={thick,->,>=stealth}
+]
+
+% Nodes
+\node (start) [process] {Calculate Match Quantity};
+\node (fill_check) [decision, below=of start] {Order Fully Filled?};
+
+% Branching out
+\node (partial) [process, below left=of fill_check, xshift=-0.5cm] {Update Order Quantity};
+\node (full) [expensive, below right=of fill_check, xshift=0.5cm] {Remove Node + Return to Pool};
+
+% Join
+\node (end) [process, below=2.5cm of fill_check] {Continue Matching};
+
+% Connections
+\draw [arrow] (start) -- (fill_check);
+\draw [arrow] (fill_check) -| node[anchor=south east, xshift=-0.2cm] {No (Partial)} (partial);
+\draw [arrow] (fill_check) -| node[anchor=south west, xshift=0.2cm] {Yes (Full)} (full);
+\draw [arrow] (partial) |- (end);
+\draw [arrow] (full) |- (end);
+
+% Annotations
+\node (prob) [text width=4cm, text centered, font=\small\itshape, right=0.5cm of fill_check] 
+    {Mixed Scenario:\\$\sim$50\% Probability\\$\implies$ \textbf{Branch Miss}};
+
+\draw [dashed, gray] ($(partial.north west)+(-0.2,0.2)$ ) rectangle ($(full.south east)+(0.2,-0.2)$ );
+\node [anchor=north west, font=\footnotesize, gray] at ($(partial.north west)+(-0.2,0.5)$ ) {Divergent Execution Paths};
+
+\end{tikzpicture}
