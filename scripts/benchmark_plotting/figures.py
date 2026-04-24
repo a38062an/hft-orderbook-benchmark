@@ -24,6 +24,14 @@ from .data_processing import (
 from .plot_style import save_figure
 
 
+def _drop_unused_scenario_categories(dataframe: pd.DataFrame) -> pd.DataFrame:
+    """Remove unused scenario category levels to avoid empty x-axis slots."""
+    cleaned = dataframe.copy()
+    if "Scenario" in cleaned.columns and pd.api.types.is_categorical_dtype(cleaned["Scenario"]):
+        cleaned["Scenario"] = cleaned["Scenario"].cat.remove_unused_categories()
+    return cleaned
+
+
 
 def plot_direct_latency_heatmap(direct_dataframe: pd.DataFrame, output_dir: Path) -> Path:
     heatmap_dataframe = direct_latency_matrix(direct_dataframe, "Latency_ns")
@@ -333,6 +341,7 @@ def plot_gateway_dense_decomposition(gateway_dataframe: pd.DataFrame, output_dir
 
 def plot_gateway_latency_by_scenario(gateway_dataframe: pd.DataFrame, output_dir: Path) -> Path:
     scenario_latency_dataframe = gateway_latency_dataframe(gateway_dataframe)
+    scenario_latency_dataframe = _drop_unused_scenario_categories(scenario_latency_dataframe)
 
     plt.figure(figsize=(10.8, 4.8))
     sns.pointplot(
@@ -359,6 +368,7 @@ def plot_gateway_latency_by_scenario(gateway_dataframe: pd.DataFrame, output_dir
 def plot_gateway_latency_by_scenario_no_vector(gateway_dataframe: pd.DataFrame, output_dir: Path) -> Path:
     scenario_latency_dataframe = gateway_latency_dataframe(gateway_dataframe)
     scenario_latency_dataframe = filter_books(scenario_latency_dataframe, BOOK_ORDER_NO_VECTOR)
+    scenario_latency_dataframe = _drop_unused_scenario_categories(scenario_latency_dataframe)
 
     plt.figure(figsize=(10.2, 4.8))
     sns.pointplot(

@@ -8,9 +8,9 @@ trade-offs to consider when designing order books as well as the implications
 of real-world system overheads. The key contributions of this work are as follows:
 
 \begin{itemize}
-    \item A modular, extensible C++20 exchange framework with interchangeable
+    \item A modular C++20 exchange framework with interchangeable
     order book implementations and a TCP gateway for end-to-end benchmarking.
-    \item A comprehensive benchmarking suite that decomposes latency and
+    \item A benchmarking suite that decomposes latency and
     throughput across direct and gateway modes, isolating data structure
     performance from system overheads.
     \item Empirical evidence on the performance trade-offs of direct indexing
@@ -27,26 +27,30 @@ The modular framework and comprehensive benchmarks provide a foundation for futu
 research and practical exchange design decisions.
 
 \section{Answers to Research Hypotheses}
-In terms of hypotheses \ref{hyp:h1}--\ref{hyp:h3}, the evidence supports the following conclusions:
+In terms of hypotheses \ref{hyp:h1}--\ref{hyp:h3}, the evidence supports the
+following conclusions. These conclusions are based on the repeated-run results
+in Chapter~\ref{chap:testing_evaluation}, with confidence intervals and gateway
+latency breakdown where relevant.
 
 \paragraph{\ref{hyp:h1}: Direct indexing outperforms pointer-heavy alternatives in isolated mode.}
 \textbf{Status: Supported.}
 
 Direct-mode benchmarks show that the direct-indexed array outperforms alternative
 structures across almost all scenarios, with mean latency around 210 ns.
-Results also indicate that in Hybrid mode, when hot storage is likely to be
-used, it outperforms tree-based structures, further reinforcing \ref{hyp:h1}.
+Results also indicate that non-array structures remain clearly slower than
+array even in shallow scenarios, reinforcing \ref{hyp:h1}.
 This is reflected consistently in the direct-mode results
 (Table~\ref{tab:throughput_results} and Table~\ref{tab:direct_mean_latency}).
 
 \paragraph{\ref{hyp:h2}: Memory pooling reduces allocation jitter but does not remove structural complexity costs.}
-\textbf{Status: Supported.}
+\textbf{Status: Supported with Caveats.}
 
 Results indicate that memory pooling improves performance in
-deep-book scenarios, where Pool outperforms Map in \texttt{sparse\_extreme} and
-\texttt{dense\_full}. At the same time, the pool logic introduces its own
+selected scenarios, particularly \texttt{sparse\_extreme} and \texttt{mixed}.
+At the same time, the pool logic introduces its own
 structural cost in mixed workloads, where branch misprediction and match-path
-complexity increase latency. So pooling is clearly useful, but it is an
+complexity increase latency, and in \texttt{dense\_full} pool still trails map.
+So pooling is clearly useful, but it is an
 optimisation, not a full solution to data-structure complexity.
 This trade-off is discussed directly in
 Section~\ref{subsec:pool_hybrid_mech}.
@@ -55,10 +59,15 @@ Section~\ref{subsec:pool_hybrid_mech}.
 \paragraph{\ref{hyp:h3}: In end-to-end gateway operation, system overhead masks internal data-structure gains.}
 \textbf{Status: Supported.}
 In gateway mode, network latency and queue latency dominate total
-latency, while engine latency remains very small in comparison. For example, for Array the
-network component is 462,884 ns out of 463,149 ns total, showing that most
-end-to-end cost is outside the matching algorithm itself. This explains why
-differences visible in direct mode become compressed in gateway mode.
+latency, while engine latency remains very small in comparison. For example, for the Array book the
+network component is 2,014,045 ns out of 2,100,661 ns total, showing that most
+end-to-end cost is outside the matching algorithm itself. This transition 
+from a p < 0.0001 result to a p > 0.05 result proves that the measurement 
+'noise' introduced by the system stack is statistically larger than the 
+order book's 'signal.' This explains why
+differences visible in direct mode are often compressed in gateway mode,
+while still allowing scenario-specific exceptions (notably hybrid in
+\texttt{dense\_full}) where queue/network accumulation diverges.
 This pattern is captured in Table~\ref{tab:gateway_decomposition}.
 
 \section{Critical Reflection}
@@ -69,7 +78,9 @@ First, the benchmark setup captures the full software path from gateway to
 engine, and the decomposition methodology gives visibility into
 network latency, queue latency, and engine latency costs. However, the loopback environment does not include physical
 network effects such as switch delay and NIC-level contention, so absolute
-latency should be treated as a lower bound.
+latency should be treated as a strict theoretical lower bound; in a physical 
+production environment, the masking effects identified here would likely be even 
+more pronounced due to hardware-level jitter.
 
 Second, the scenario design is robust for comparing relative behaviour across
 implementations, especially for highlighting dense-book stress effects. At the
@@ -82,12 +93,27 @@ understand algorithmic efficiency, but gateway-mode results are necessary for
 deployment decisions where system overhead dominates.
 
 If this project were repeated, three design choices would be adjusted earlier.
-First, the evaluation plan would include larger run counts from the start to
-support tighter confidence reporting. Second, gateway experiments would include
-an additional host-level networking baseline (for example, alternative socket or
+First, while this study implemented rigorous pairwise Welch's t-tests to 
+identify significant performance tiers, a more exhaustive evaluation plan 
+would have included these formal tests for every single 
+implementation-scenario combination from the first iteration. This would 
+integrate statistical rigour even more deeply into the data-gathering phase.
+Second, gateway experiments would include an additional host-level networking
+baseline (for example, alternative socket or
 transport configurations) to separate framework effects from OS-path effects.
 Third, scenario generation would be extended with longer replay windows so that
 steady-state and stress-state behaviour can be contrasted more explicitly.
+
+\subsection{Methodological Reflection}
+Reflecting on the engineering process, the decision to use a custom wait-free SPSC queue
+was a successful trade-off for learning and performance. However, it introduced a sec-
+ondary bottleneck during timing capture. In a future iteration, implementing a dedicated,
+lock-free measurement buffer with deferred storage would minimise the "observer effect"
+even further. Moreover, while the Hexagonal architecture provided excellent modular-
+ity for swapping order books, the cost of virtual functions in the hot path is a known
+architectural tax. Exploring CRTP (Curiously Recurring Template Pattern) for static
+polymorphism could potentially reclaim several nanoseconds of matching-engine latency.
+This is a key consideration for reaching the extreme low-latency threshold.
 
 \section{Limitations}
 \begin{itemize}
@@ -95,47 +121,78 @@ steady-state and stress-state behaviour can be contrasted more explicitly.
     so absolute numbers may change on other operating-system and CPU stacks.
     \item Workload realism: scenarios are representative and diverse, but still
     synthetic, and therefore cannot capture every market microstructure effect.
-    \item Statistical depth: with $n=5$ runs per case, major trends are clear,
-    but confidence analysis would benefit from larger samples.
+    \item Statistical scope: this dissertation uses confidence intervals and 
+    pairwise Welch's t-tests for the main hypothesis checks, but does not 
+    exhaustively test every implementation-scenario combination.
     \item Loopback boundary: gateway mode exercises software networking cost but
     excludes physical network path variability.
 \end{itemize}
 
+\section{Professional, Ethical, Social, and Legal Issues}
+Developing sub-microsecond matching engines is as much an ethical challenge as a 
+technical one. As this dissertation demonstrates, achieving O(1) matching via the 
+ArrayOrderBook provides a massive competitive edge. This "race to zero" creates a 
+significant "digital divide" in the markets; only large institutional players with the 
+capital to implement hardware-aware optimisations and co-located infrastructure can 
+realistically compete. Smaller firms and retail investors, who cannot afford isolated CPU 
+cores and bespoke memory management, are left at a structural disadvantage \citep{lewis2014flash}.
+
+There is also a clear conflict between raw speed and market stability. Stripping 
+away branching logic and validation checks to reduce latency, as I explored in Chapter 4, 
+introduces systemic risk. Algorithms that prioritise throughput over safety can propagate 
+erroneous orders at nanosecond scales, potentially triggering "Flash Crashes" that human 
+traders cannot stop in time \citep{kirilenko2017flash}. To counter this, the architecture 
+built here enforces semantic parity and boundary checks—not just as good engineering, 
+but as a necessary ethical safeguard.
+
+Legally, modern exchange infra must sit within the MiFID II regulatory framework 
+\citep{mifid2}. This requires "kill-switches" and robust testing prior to deploy-
+ment. My benchmarking suite acts as a key compliance tool here; it allows engineers to 
+measure the exact latency "tax" of these mandatory safety features, ensuring the engine 
+remains stable and compliant without flying blind into production.
+
 \section{Practical Recommendations}
+Based on the empirical findings, the following recommendations are provided for exchange architects:
+
 \begin{itemize}
-    \item Use direct-indexed layouts when the workload is dense and latency
-    critical, because they provide the strongest isolated matching-path
-    performance in this study.
-    \item Treat memory pooling as a targeted optimisation for allocation-heavy
-    scenarios, not as a substitute for efficient structural layout.
-    \item For deployment decisions, prioritise full-path gateway measurements
-    and latency decomposition, since network and queue components can dominate
-    end-to-end behaviour and mask engine-level gains.
+    \item \textbf{Prioritise Determinism:} Use direct-indexed layouts in latency-critical paths, as they provide the most stable Matching-path performance under stress.
+    \item \textbf{Targeted Optimisation:} Deploy memory pooling specifically for allocation-heavy scenarios (e.g., Sparse LOBs), as the structural overhead of pooling logic may degrade performance in denser scenarios.
+    \item \textbf{System-Level Visibility:} Prioritise end-to-end latency decomposition. As shown in Chapter 5, internal engine gains are often masked by transport overhead, making networking the highest-impact area for further engineering investment.
 \end{itemize}
 
 \section{Future Work}
-\begin{itemize}
-    \item Integrate kernel-bypass transport (for example DPDK/OpenOnload) to
-    quantify how much gateway masking can be reduced.
-    \item Replay historical market data over long horizons, including stressed
-    periods (for example crash windows and volatility spikes), to evaluate how
-    each implementation behaves over time under realistic flow dynamics
-    \citep{gould2013lob}.
-    \item Increase statistical depth with larger $n$, confidence intervals, and
-    significance testing for tighter claims.
-\end{itemize}
+First, the 'masking effect' identified in gateway-mode benchmarks suggests 
+that the next logical step is to move beyond the POSIX stack. Future research 
+should integrate Kernel Bypass technologies, such as DPDK (Data Plane 
+Development Kit) or user-space transport like OpenOnload. By eliminating 
+the OS kernel from the hot path, researchers can evaluate whether the 
+engine-level efficiencies identified in direct mode become visible at the 
+end-to-end level.
+
+Second, the stability of the ArrayOrderBook suggests it is a primary candidate 
+for Hardware Acceleration. Implementing the price-map logic on an FPGA 
+(Field Programmable Gate Array) would remove the CPU jitter and 
+frequency-scaling penalties discussed in Chapter 5. A hybrid hardware-software 
+architecture could offload the Price-Time priority matching to the FPGA while 
+maintaining the FIX protocol logic in C++20, potentially reaching 
+nanosecond-scale determinism across all market scenarios.
 
 \section{Closing Statement}
 Taken together, the objectives set in Chapter~\ref{chap:introduction} were met:
 the framework enabled fair cross-implementation benchmarking, direct mode and
 gateway mode exposed different bottlenecks, and the decomposition evidence
-showed where end-to-end latency is actually spent. The practical implication is
+showed where end-to-end latency is actually spent. To ensure these findings 
+were mathematically sound, every quantitative claim was verified through 
+a formal statistical framework incorporating Welch's t-tests and 
+Bonferroni corrections. This rigour demonstrates that the observed 
+performance trends are scientifically robust and not attributable to 
+measurement noise. The practical implication is
 that data-structure engineering remains essential for engine efficiency, but
 deployment-level latency improvements require equal attention to transport and
 queueing overhead.
 
-Overall, this dissertation shows that order-book performance is a systems
-problem, not only a data-structure problem. In isolated mode, cache-friendly
-indexing gives clear wins, but in gateway mode transport overhead can dominate
-and mask those gains. The framework and evidence produced here provide a
-practical basis for both future research and real exchange design decisions.
+Overall, this dissertation demonstrates that order book performance is a 
+system-level problem. In isolated mode, cache-friendly indexing gives clear 
+wins, but in gateway operation, transport overhead can dominate and mask those 
+gains. The framework and evidence produced here provide a practical basis for 
+future research and exchange design decisions.

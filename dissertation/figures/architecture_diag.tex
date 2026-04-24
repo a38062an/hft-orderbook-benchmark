@@ -1,5 +1,5 @@
 \begin{tikzpicture}[
-    node distance=2cm, 
+    node distance=2.8cm, 
     auto,
     block/.style={rectangle, draw, fill=blue!10, text width=7.5em, text centered, rounded corners, minimum height=3em},
     line/.style={draw, -latex'},
@@ -10,7 +10,7 @@
     \node [block] (gen) {Order Generator};
     \node [block, below of=gen, xshift=-3cm] (direct) {Direct Benchmark};
     \node [block, below of=gen, xshift=3cm] (client) {Mock Client (Gateway)};
-    \node [block, below=1.5cm of client] (gateway) {TCP Gateway (Server)};
+    \node [block, below=2cm of client] (gateway) {TCP Gateway (Server)};
     \node [interface, below of=gateway, xshift=-3cm] (iface) {\texttt{IOrderBook}};
     \node [block, below of=iface] (book) {Implementation (e.g. Array)};
     \node [block, right=2cm of book] (telemetry) {Metric Collection};

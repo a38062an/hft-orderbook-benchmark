@@ -1,15 +1,31 @@
-# HFT Orderbook Benchmark
+# HFT Order Book Benchmark Framework
 
-Trading engine and benchmarking suite for analyzing order book data structures and system latency.
+A high-performance C++20 infrastructure for benchmarking automated trading strategies and order book data structures with nanosecond precision.
 
-## Build Instructions
+## 🚀 Quick Start (For Markers)
 
-Requirements: CMake, C++20 compiler, Python 3.
+The system requires a C++20 compliant compiler (GCC 11+ or Clang 13+) and CMake 3.15+.
 
+### 1. Build
 ```bash
 mkdir -p build && cd build
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
+```
+
+### 2. Run Direct Mode (Isolated Engine Test)
+```bash
+./build/benchmarks/orderbook_benchmark --mode direct --book array --scenario mixed --orders 1000000
+```
+
+### 3. Run Gateway Mode (Networked Test)
+Start the gateway/server in one terminal:
+```bash
+./build/src/hft_exchange_server --book array --port 12345
+```
+Run the benchmark client in another:
+```bash
+./build/benchmarks/orderbook_benchmark --mode gateway --book array --port 12345 --orders 10000
 ```
 
 ## Testing (GoogleTest + CTest)

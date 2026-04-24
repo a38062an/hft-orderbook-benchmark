@@ -290,16 +290,16 @@ void printSummaryTable(const std::vector<BenchmarkResult> &allResults, const std
                   return a.book < b.book;
               });
 
-    std::cout << "\n" << std::string(187, '=') << "\n";
+    std::cout << "\n" << std::string(205, '=') << "\n";
     std::cout << "GLOBAL PERFORMANCE SUMMARY (all recorded runs)\n";
-    std::cout << std::string(187, '=') << "\n";
+    std::cout << std::string(205, '=') << "\n";
     std::cout << std::left << std::setw(10) << "Mode" << std::setw(20) << "Scenario" << std::setw(12) << "Book"
               << std::right << std::setw(13) << "Latency(ns)" << std::setw(12) << "Std" << std::setw(12) << "P99(ns)"
               << std::setw(12) << "P99Std" << std::setw(12) << "Max(ns)" << std::setw(15) << "Throughput"
               << std::setw(12) << "Net/Prod" << std::setw(12) << "Que(ns)" << std::setw(12) << "Eng(ns)"
               << std::setw(12) << "Ins(ns)" << std::setw(12) << "Can(ns)" << std::setw(12) << "Lkp(ns)" << std::setw(15)
               << "Match/Drop";
-    std::cout << "\n" << std::string(211, '-') << "\n";
+    std::cout << "\n" << std::string(205, '-') << "\n";
 
     std::string lastModeScenario = "";
     for (const auto &res : sortedResults)
@@ -307,7 +307,7 @@ void printSummaryTable(const std::vector<BenchmarkResult> &allResults, const std
         std::string currentKey = res.mode + res.scenario;
         if (!lastModeScenario.empty() && currentKey != lastModeScenario)
         {
-            std::cout << std::string(187, '-') << "\n";
+            std::cout << std::string(205, '-') << "\n";
         }
 
         std::cout << std::left << std::setw(10) << res.mode << std::setw(20) << res.scenario << std::setw(12)
@@ -346,7 +346,7 @@ void printSummaryTable(const std::vector<BenchmarkResult> &allResults, const std
         std::cout << "\n";
         lastModeScenario = currentKey;
     }
-    std::cout << std::string(187, '=') << "\n";
+    std::cout << std::string(205, '=') << "\n";
     std::cout << "[Note] Latency = Pure Algorithmic Time (Direct) or End-to-End System Time (Gateway)\n";
     if (!csvOut.empty())
     {

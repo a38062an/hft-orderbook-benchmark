@@ -2,8 +2,8 @@
 
 | Scenario | Best Cancel Book | Cancel Latency (ns) | Second-Best Cancel Book | Second-Best Latency (ns) |
 |---|---:|---:|---:|---:|
-| mixed | array | 12.20 | vector | 22.34 |
-| high_cancellation | array | 12.07 | pool | 16.42 |
+| mixed | array | 46.30 | vector | 325.80 |
+| high_cancellation | array | 46.38 | pool | 112.14 |
 
 Notes:
 - Only scenarios with at least one cancellation event are listed.

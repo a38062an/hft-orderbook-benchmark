@@ -2,40 +2,43 @@
 \label{chap:introduction}
 
 \section{Context and Motivation}
-In finance, one domain naturally sits at the bleeding edge of software
-performance: high-frequency trading (HFT), where firms compete to execute
-orders at the lowest possible latency~\citep{aldridge2013hft}. In this context,
-the order book is one of the most important components, because it maintains
-the state of buy and sell orders for each instrument and sits on the critical
-processing path~\citep{gould2013lob}. The design of the order book can therefore
-directly affect execution quality and overall system behaviour.
+In \hyperref[app:glossary]{high-frequency trading (HFT)}, firms compete to execute orders at the 
+lowest possible latency~\citep{aldridge2013hft,bilokon2023cpp}. 
+In this environment, the \hyperref[app:glossary]{order book} serves as the fundamental 
+state-machine on the critical path. 
+The design of this component is a system-level problem where cache-coherence, 
+branch-prediction, and network-stack overhead intersect to define 
+performance~\citep{gould2013lob,thompson2011disruptor}.
 
-Given this dependence on low-latency software, understanding the performance
-implications of different order-book designs is important for both researchers
-and practitioners. This dissertation evaluates and compares order-book data
-structures in a realistic benchmarking environment. Detailed technical
-definitions are provided in Chapter~\ref{chap:background}; this chapter focuses
-on the research problem, objectives, and scope of the study.
+Given this dependence on low-latency software, understanding the performance 
+implications of different order-book designs is important for both researchers 
+and practitioners. 
+This dissertation evaluates and compares order-book data 
+structures in a realistic benchmarking environment. 
+Detailed technical definitions are provided in Chapter~\ref{chap:background}; 
+this chapter focuses on the research problem, objectives, and scope of the study.
 
 \section{Problem Statement and Research Gap}
 Although there has been significant work on order-book data structures, much of
 industry practice remains opaque because implementation details are commercially
-sensitive. Any advantage gained from an optimised order-book design can be worth
-substantial financial value, so firms rarely disclose architecture decisions in
-full detail. This creates a useful role for academic benchmarking: transparent,
-reproducible evaluation under controlled conditions.
-
-Another gap is methodological. Many comparisons emphasise isolated algorithmic
-performance but do not capture full end-to-end latency, where transport and
-system overhead can dominate. This dissertation addresses that gap with a
-two-mode approach: direct mode to isolate order-book behaviour, and gateway mode
-to evaluate the complete software path from network ingress to matching-engine
-processing.
+sensitive. Any advantage gained from an optimised order-book design can be worth 
+substantial financial value, so firms rarely disclose architecture decisions in 
+detail. 
+This creates a role for academic benchmarking: providing a 
+reproducible evaluation of the architectures that drive global markets. 
+This study addresses a methodological gap by adopting a 
+two-mode philosophy. 
+While isolated performance is an important metric, it does not capture the 
+\hyperref[app:glossary]{"Masking Effect"} of the full software path. 
+This dissertation presents a framework that decomposes latency across 
+direct and gateway modes to show where algorithmic wins yield to 
+system-level bottlenecks.
 
 \section{Aim and Objectives}
 This dissertation aims to design, implement, and evaluate a C++20 exchange 
 infrastructure for benchmarking order book data structures in high-frequency 
-trading environments. The specific objectives are as follows:
+trading environments. 
+The specific objectives are as follows:
 
 \begin{itemize}
   \item Define a modular benchmarking framework with interchangeable order-book
@@ -51,7 +54,7 @@ trading environments. The specific objectives are as follows:
 \end{itemize}
 
 To evaluate these objectives, the study uses direct mode and gateway mode, and
-reports mean latency, P99 latency, throughput, and component-level decomposition
+reports mean latency, \hyperref[app:glossary]{P99 latency}, throughput, and component-level decomposition
 of network latency, queue latency, and engine latency against
 \ref{hyp:h1}--\ref{hyp:h3}.
 

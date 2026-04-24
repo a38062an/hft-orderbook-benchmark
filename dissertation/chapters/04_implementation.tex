@@ -8,8 +8,9 @@ We selected C++20 for the engine specifically to use \texttt{std::span}
 and other modern primitives that provide memory safety without the runtime 
 cost of managed pointers. 
 To manage the five discrete order book implementations, we used the 
-\texttt{CMake} build system, which allowed us to maintain a modular 
-architecture while ensuring identical compiler flags across all variants.
+\texttt{CMake} build system. 
+This allowed us to maintain a modular architecture while ensuring identical 
+compiler flags across all variants.
 
 Key components of the toolchain include:
 \begin{itemize}
@@ -17,15 +18,14 @@ Key components of the toolchain include:
     for non-owning views of message buffers. This choice was made to 
     eliminate unnecessary copies during FIX parsing while keeping 
     memory layouts consistent and predictable.
-    \item \textbf{POSIX Socket API}: We opted for the raw \texttt{sys/socket.h} 
-    API over higher-level networking libraries. By bypassing those 
-    abstractions, we ensure the gateway's latency is purely a function 
-    of the OS kernel stack traversal.
-    \item \textbf{Functional Parity Testing}: To ensure that every order 
-    book variant produces identical matching results, we built a 
-    unit testing suite around the \texttt{GoogleTest} framework. This 
-    validates that implementations remain functionally consistent, even 
-    when their internal memory layouts differ.
+    \item \textbf{POSIX Socket API}: We opted for the raw \texttt{sys/socket.h} API over higher-level networking 
+libraries. 
+By bypassing those abstractions, we ensure the gateway's latency is purely a 
+function of the OS kernel stack traversal.
+    \item \textbf{Functional Parity Testing}: To ensure that every order book variant produces identical matching results, 
+we built a unit testing suite around the \texttt{GoogleTest} framework. 
+This validates that implementations remain functionally consistent, even 
+when their internal memory layouts differ.
 \end{itemize}
 
 \section{Order Book Implementations}
@@ -42,13 +42,14 @@ in the results in Table~\ref{tab:direct_mean_latency}.
 
 \subsection{Direct-Indexed Array (O(1) Access)}
 The \texttt{ArrayOrderBook} achieves O(1) price retrieval by mapping price 
-levels directly to a contiguous array. While this approach is the fastest 
-possible method for price lookups, it introduces a practical constraint: 
-the book must know its price range at startup. We chose this trade-off 
-to establish a theoretical performance floor for the study, fulfilling 
-the requirements for low-latency execution (\FR{2}). Mapping prices 
-to indices, as shown in Listing 4.1, is a simple arithmetic operation that 
-remains stable regardless of the book's depth.
+levels directly to a contiguous array. 
+While this approach is the fastest possible method for price lookups, it 
+introduces a practical constraint: the book must know its price range at 
+startup. 
+We chose this trade-off to establish a theoretical performance floor for the 
+study, fulfilling the requirements for low-latency execution (\FR{2}). 
+Mapping prices to indices, as shown in the listing below, is a simple arithmetic
+operation that remains stable regardless of the book's depth.
 
 \begin{lstlisting}[language=C++, caption={O(1) Price-to-Index Mapping}]
 // src/orderbooks/array_order_book.cpp
@@ -63,10 +64,16 @@ void ArrayOrderBook::addOrder(const Order &order) {
 
     // Direct access to the price level's memory location
     Index index = priceToIndex(order.price);
-    auto &levels = (order.side == Side::Buy) ? bidLevels_ : askLevels_;
-    
-    levels[index].push_back(order);
-    updateCaches(order); // O(1) cache update
+
+    if (order.side == Side::Buy) {
+        bidLevels_[index].push_back(order);
+        activeBidLevels_[index] = true;
+        if (order.price > cachedBestBid_) cachedBestBid_ = order.price; // O(1)
+    } else {
+        askLevels_[index].push_back(order);
+        activeAskLevels_[index] = true;
+        if (order.price < cachedBestAsk_) cachedBestAsk_ = order.price; // O(1)
+    }
 }
 \end{lstlisting}
 
@@ -100,9 +107,9 @@ void HybridOrderBook::addOrder(const Order &order) {
 This model balances the flexibility of a traditional order book (\FR{1}) 
 with higher performance for price levels immediately surrounding the 
 spread. The impact of the hot-path size on overall matching throughput 
-is analyzed in Section~\ref{subsec:pool_hybrid_mech}.
+is analysed in Section~\ref{subsec:pool_hybrid_mech}.
 
-\subsection{Pool-Allocated Order Book (Slab Allocation)}
+\subsection{Pool-Allocated Order Book (\hyperref[app:glossary]{Slab Allocation})}
 Runtime heap allocations are a primary source of latency jitter in 
 dynamic systems. The \texttt{PoolOrderBook} mitigates this by using 
 a pre-allocated slab of \texttt{OrderNode} structures. By managing an 
@@ -110,7 +117,7 @@ internal free list, the engine can add or cancel orders without requesting
 memory from the OS kernel, ensuring the matching path remains 
 deterministic.
 
-\begin{lstlisting}[language=C++, caption={Slab-Allocation and Free List Management}]
+\begin{lstlisting}[language=C++, caption={Slab-Allocation and Free List Management}, label={lst:slab_allocation}]
 // src/orderbooks/pool_order_book.cpp
 
 Index PoolOrderBook::allocateSlot() {
@@ -133,22 +140,22 @@ void PoolOrderBook::freeSlot(Index idx) {
 
 By reusing memory slots, we keep the matching logic deterministic. This 
 mitigates allocation jitter and helps verify the reduced tail latency 
-analyzed in Section~\ref{subsec:pool_hybrid_mech}.
+analysed in Section~\ref{subsec:pool_hybrid_mech}.
 
 \section{The TCP Order Gateway}
-We need to test the system under network conditions for H3, so we implemented 
+To evaluate the system under realistic network conditions for \ref{hyp:h3}, we implemented 
 a high-performance TCP gateway. This component connects external FIX 
 clients to the internal core through a lock-free interface.
 
 \subsection{Protocol Specification and Parsing}
 Our FIX implementation focus was on parsing speed rather than full 
 protocol coverage. The gateway uses a non-allocating incremental 
-parser that processes raw buffers as they arrive. As Listing 4.3 
-demonstrates, we used a sliding window technique to handle fragmented 
-TCP packets, satisfying the realism requirement of \NFR{4} while keeping 
+parser that processes raw buffers as they arrive. As the listing below 
+demonstrates, we used a sliding window technique to handle fragmented
+TCP packets, satisfying the realism requirement of \NFR{4} while keeping
 the matching core separate from network ingestion.
 
-\begin{lstlisting}[language=C++, caption={Incremental FIX Parsing Loop}]
+\begin{lstlisting}[language=C++, caption={Incremental FIX Parsing Loop}, label={lst:fix_parsing}]
 // src/network/tcp_order_gateway.cpp
 
 void TCPOrderGateway::clientHandler(int clientSocket) {
@@ -191,10 +198,10 @@ void TCPOrderGateway::clientHandler(int clientSocket) {
 \end{lstlisting}
 
 \subsection{The Loopback Simulation Model}
-We need to measure kernel networking overhead without the jitter of hardware 
-NICs, so we run the gateway on the loopback interface (\texttt{127.0.0.1}). 
-This allows us to isolate the "Wire-to-Engine" latency analyzed in 
-Section~\ref{subsec:scenario_latency}.
+To measure kernel networking overhead without the jitter of hardware 
+NICs, we run the gateway on the loopback interface (\texttt{127.0.0.1}). 
+This allows us to isolate the "Wire-to-Engine" latency analysed in 
+Section~5.5.
 
 \section{High-Performance Concurrency}
 The system employs a multi-threaded architecture to separate high-latency 
@@ -204,13 +211,13 @@ I/O from the latency-sensitive matching core.
 For Direct and single-client Gateway modes, we use a custom 
 Single-Producer Single-Consumer (SPSC) queue. This implementation 
 relies on a contiguous ring-buffer and atomic head/tail pointers 
-with \texttt{std::memory\_order\_acquire/release} semantics, ensuring 
+with \texttt{std::memory\_order\_acquire/release} semantics~\citep{michael1996simple}, ensuring 
 that the matching engine does not block in this design due to lock contention.
 
 In multi-producer scenarios (\FR{4}), the system swaps the SPSC queue 
 for the \texttt{ConcurrentQueue} library~\citep{moodycamel_concurrentqueue}. 
 We opted for this established lock-free implementation to ensure our results 
-reflect the underlying data structure performance rather than my own 
+reflect the underlying data structure performance rather than our own 
 queue implementation logic. We evaluate this MPMC transport under 
 contention in Section~\ref{sec:mpsc_contention}.
 
@@ -223,12 +230,12 @@ precise timing and thread management.
 To achieve the nanosecond granularity required for order book benchmarking, 
 the system employs the \texttt{std::chrono} high-resolution clock. While 
 cycle-level precision is typically associated with the CPU's Time Stamp 
-Counter (\texttt{RDTSC}), our implementation uses the standard C++ library 
+Counter (\hyperref[app:glossary]{\texttt{RDTSC}}), our implementation uses the standard C++ library 
 to ensure portability across environments (specifically WSL2) while 
 maintaining the precision necessary for the evaluation in 
 Chapter~\ref{chap:testing_evaluation}.
 
-\begin{lstlisting}[language=C++, caption={Nanosecond Precision Timing}]
+\begin{lstlisting}[language=C++, caption={Nanosecond Precision Timing}, label={lst:rdtsc}]
 // src/utils/rdtsc.hpp
 
 inline uint64_t getCurrentTimeNs() {
@@ -245,7 +252,7 @@ To eliminate the performance jitter caused by the Linux scheduler
 migrating threads across physical cores (the "Context Switching Jitter"), 
 we implemented CPU pinning as shown in Listing 4.5.
 
-\begin{lstlisting}[language=C++, caption={POSIX Thread Pinning Strategy}]
+\begin{lstlisting}[language=C++, caption={POSIX Thread Pinning Strategy}, label={lst:cpu_pinning}]
 // src/utils/thread_pinning.hpp
 
 inline bool pinToCore(int core_id) {
@@ -264,14 +271,16 @@ inline bool pinToCore(int core_id) {
 
 By binding the matching engine thread to a specific physical core, we 
 eliminate "Context Switching Jitter" where the OS scheduler migrates a 
-thread between CPUs. This ensures that the engine's working set 
-remains "hot" in the local L1/L2 caches, maintaining the deterministic 
-execution time required to validate our performance claims. This pinning 
-helps satisfy \NFR{4} by making sure our measurements are not skewed by 
-operating system interference.
+thread between CPUs. 
+This ensures that the engine's working set remains "hot" in the local L1/L2 
+caches, maintaining the deterministic execution time required to validate 
+our performance claims. 
+This pinning helps satisfy \NFR{4} by making sure our measurements are not 
+skewed by operating system interference.
 
 \section{Automation and Data Collection}
 The suite uses a Python-based driver to sweep across the benchmark 
-scenarios defined in Chapter~\ref{chap:system_design}. This driver coordinates 
-the execution of each order book variant and manages the serialized CSV output 
-required for the detailed evaluation in Chapter~\ref{chap:testing_evaluation}.
+scenarios defined in Chapter~\ref{chap:system_design}. 
+This driver coordinates the execution of each order book variant and manages 
+the serialised CSV output required for the detailed evaluation in 
+Chapter~\ref{chap:testing_evaluation}.

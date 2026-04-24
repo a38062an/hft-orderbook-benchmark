@@ -99,7 +99,8 @@
         \vspace{0.8cm}
         
         \large
-        \today
+        \today\\[0.3cm]
+        Word Count: 14,865 (Verified via texcount)
         
     \end{center}
 \end{titlepage}
@@ -109,26 +110,25 @@
 
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-A C++20 exchange infrastructure is presented for benchmarking five order book
-data structure strategies across direct and gateway operating modes. The
-framework contains a TCP order gateway, an incremental FIX parser, a lock-free
-single-producer single-consumer queue, and a single-threaded matching engine
-connected to interchangeable order book implementations. On the canonical
-pinned-run dataset (2026-03-26), direct-indexed array access is the strongest
-direct-mode implementation in six of seven scenarios, with mixed-scenario mean
-latency of 210.72 ns and dense-full mean latency of 213.44 ns. In contrast,
-sorted-vector insertion degrades sharply in dense books, reaching 16082.10 ns
-in dense-full direct mode (75.3x slower than array). Gateway-mode latency is
-dominated by network and transport overhead for non-vector rows (median network
-share 98.7\%), which reduces the visible contribution of internal order-book
-differences to end-to-end timing. The evidence supports two bounded
-conclusions. First, data-structure execution path and memory-access behavior
-are the dominant factors when algorithmic work is isolated. Second, in
-end-to-end gateway operation, system-level bottlenecks can mask data-structure
-gains unless transport and parsing overhead are reduced. The project
-contributes a reproducible benchmark harness, scenario-driven workload
-generation, and decomposed network/queue/engine timing suitable for future experiments
-on kernel-bypass networking and multi-producer ingestion.
+While algorithmic optimisation is a cornerstone of high-frequency trading (HFT), 
+its practical impact is defined by the hardware-network stack. This dissertation 
+presents a modular C++20 exchange infrastructure for benchmarking five order 
+book implementations: array (direct-indexed), map (associative tree), vector 
+(sorted), pool (slab-allocated), and hybrid (hot-cold tiered). These are 
+evaluated in both direct and gateway modes. Three research hypotheses are 
+evaluated: that cache-friendly indexing outperforms pointer-heavy alternatives 
+(H1), that memory pooling reduces allocation costs without eliminating 
+structural penalties (H2), and that system-level transport overhead masks 
+engine-level gains (H3). To ensure scientific rigour, each claim is verified 
+through Welch’s t-tests with Bonferroni corrections and 95\% confidence 
+intervals (n = 30). In direct mode, the array implementation achieves a mean 
+latency of 210 ns across scenarios, decisively outperforming all alternatives 
+(p < 0.0001). However, in gateway mode, a quad-timestamp decomposition reveals 
+that transport and queueing consume 88--96\% of total latency, causing 
+implementations to become statistically indistinguishable at the end-to-end 
+level (p = 0.21). These results identify where engineering effort should 
+transition from matching engine optimisation to transport-layer efficiency. 
+All metrics are bounded to a pinned WSL2/AMD Ryzen environment.
 
 \clearpage
 \pagenumbering{arabic}
@@ -147,29 +147,302 @@ on kernel-bypass networking and multi-producer ingestion.
 }
 
 \appendix
+
+\chapter{Glossary}
+\label{app:glossary}
+
+\begin{description}
+
+\item[Bid/Ask] The highest price a buyer offers (bid) and the lowest price a seller accepts (ask). The gap between them is the spread.
+
+\item[Bonferroni Correction] A method for adjusting the significance threshold when performing multiple statistical tests, calculated as $\alpha_{adj} = \alpha/m$ where $m$ is the number of comparisons.
+
+\item[Cache Line] A fixed-size block of memory (typically 64 bytes) transferred between main memory and the CPU cache in a single operation.
+
+\item[Confidence Interval (CI)] A range of values within which the true population parameter is expected to lie with a given probability (95\% in this study).
+
+\item[Context Switch] The process of a CPU saving the state of one task/context and loading another, introducing nanosecond-to-microsecond jitter.
+
+\item[CRTP (Curiously Recurring Template Pattern)] A C++ idiom where a class derives from a class template, with itself as a template argument, enabling static polymorphism.
+
+\item[DMA (Direct Memory Access)] A hardware feature allowing peripherals (like a NIC) to access system memory independently of the CPU, critical for low-latency networking.
+
+\item[False Sharing] Performance degradation occurring when cores on different processors modify variables that reside on the same cache line.
+
+\item[FIX Protocol (Financial Information eXchange)] A standard messaging protocol for real-time electronic exchange of securities transactions.
+
+\item[Frequency-scaling Residency] The proportion of time a processor core spends in its maximum performance state (P0). High residency is critical in HFT to avoid ``wakeup'' latencies.
+
+\item[HFT (High-Frequency Trading)] A type of algorithmic trading characterised by high speeds, high turnover rates, and sub-millisecond execution.
+
+\item[L1/L2/L3 Cache] Levels of the CPU cache hierarchy, ordered by increasing size and decreasing speed. L1 is fastest (1--2 ns), L3 is slowest (10--20 ns).
+
+\item[Limit Order Book (LOB)] A record of all outstanding buy and sell limit orders for an instrument, organised by price-time priority.
+
+\item[Lock-Free] A concurrency property where at least one thread is guaranteed to make progress, avoiding deadlock risks.
+
+\item[Masking Effect] The phenomenon where system-level overheads (network, queueing) dominate total latency and hide implementation-level performance differences.
+
+\item[Mechanical Sympathy] The design philosophy of aligning software architecture with the underlying hardware capabilities (cache, branch prediction, etc.) to achieve maximum performance.
+
+\item[MESI Protocol] The foundational cache coherence protocol (Modified, Exclusive, Shared, Invalid) used to synchronise memory states across cores.
+
+\item[MPSC] Multi-Producer Single-Consumer. A queue pattern where multiple threads write concurrently but only one thread reads.
+
+\item[NIC (Network Interface Card)] The hardware component that connects a computer to a computer network, often the first point of measurements in HFT stacks.
+
+\item[P-state (Performance State)] The operational frequency and voltage of a processor core. P0 is the highest frequency state (Turbo).
+
+\item[P99 Latency] The 99th-percentile latency: the value below which 99\% of all observed latencies fall, used to characterise ``tail'' behaviour.
+
+\item[RDTSC (Read Time-Stamp Counter)] A high-precision instruction that returns the number of CPU cycles since reset, used for nanosecond-accurate profiling.
+
+\item[Slab Allocation] A memory management strategy that pre-allocates a pool of objects and recycles them, avoiding runtime heap allocation.
+
+\item[SPSC] Single-Producer Single-Consumer. A queue pattern where exactly one thread writes and one thread reads, allowing for wait-free implementation.
+
+\item[Throughput] The rate at which orders are successfully processed by the system, typically measured in operations per second (ops/sec).
+
+\item[Wait-Free] A strong concurrency property where every thread is guaranteed to complete its operation in a finite number of steps, regardless of the relative speed of other threads.
+
+\item[Welch's t-test] A statistical test used to verify the difference between two means when variances are unequal.
+
+\item[Zero-Copy] A networking technique where data is transferred between buffers without an intermediate copy operation, minimising CPU overhead.
+
+\end{description}
+
 \chapter{LockFreeQueue Implementation}
-This appendix contains the lock-free queue implementation used in the
-benchmark pipeline. The listing is provided in the submitted artefact bundle as
-source code under the corresponding implementation directories.
+The wait-free SPSC ring buffer used for direct and single-client gateway modes. The design uses monotonic counters with bitwise masking (requiring power-of-two capacity) and cache-line-aligned atomics to prevent false sharing between the producer and consumer threads.
+
+\begin{lstlisting}[caption={Wait-Free SPSC Ring Buffer (src/utils/lock\_free\_queue.hpp)}]
+template <typename ItemType, size_t QueueCapacity>
+requires(std::has_single_bit(QueueCapacity))
+class LockFreeQueue
+{
+public:
+  LockFreeQueue() : writeIndex_{0}, readIndex_{0} {}
+
+  // Disable copy/move to prevent state corruption
+  LockFreeQueue(const LockFreeQueue &) = delete;
+  LockFreeQueue &operator=(const LockFreeQueue &) = delete;
+
+  [[nodiscard]] bool push(const ItemType &item) noexcept
+  {
+    const auto currentWrite = writeIndex_.load(
+        std::memory_order_relaxed);
+    const auto nextWrite = currentWrite + 1;
+    const auto currentRead = readIndex_.load(
+        std::memory_order_acquire);
+
+    if (nextWrite - currentRead > QueueCapacity)
+      return false; // Full
+
+    buffer_[currentWrite & (QueueCapacity - 1)] = item;
+    writeIndex_.store(nextWrite, std::memory_order_release);
+    return true;
+  }
+
+  [[nodiscard]] bool pop(ItemType &value) noexcept
+  {
+    const auto currentRead = readIndex_.load(
+        std::memory_order_relaxed);
+    const auto currentWrite = writeIndex_.load(
+        std::memory_order_acquire);
+
+    if (currentRead == currentWrite)
+      return false; // Empty
+
+    value = buffer_[currentRead & (QueueCapacity - 1)];
+    readIndex_.store(currentRead + 1,
+                     std::memory_order_release);
+    return true;
+  }
+
+private:
+  alignas(64) std::atomic<size_t> writeIndex_;
+  alignas(64) std::atomic<size_t> readIndex_;
+  std::array<ItemType, QueueCapacity> buffer_;
+};
+\end{lstlisting}
 
 \chapter{ArrayOrderBook addOrder}
-This appendix points to the focused ArrayOrderBook insertion path, including
-index mapping and best-level cache updates, as implemented in the submitted
-source artefacts.
+The focused insertion path for the direct-indexed array book, showing the O(1) price-to-index mapping and best-level cache update that underpins the sub-220 ns mean latency reported in Chapter 5.
+
+\begin{lstlisting}[caption={ArrayOrderBook Insertion (src/orderbooks/array\_order\_book.cpp)}]
+Index ArrayOrderBook::priceToIndex(Price price) const {
+  return (price - minPrice_) / tickSize_;
+}
+
+void ArrayOrderBook::addOrder(const Order &order) {
+  if (orderLookup_.find(order.id) != orderLookup_.end())
+    return; // Reject duplicate
+
+  if (!isValidPrice(order.price)) return;
+
+  Index index = priceToIndex(order.price);
+
+  if (order.side == Side::Buy) {
+    auto &orderList = bidLevels_[index];
+    orderList.push_back(order);
+    activeBidLevels_[index] = true;
+    if (order.price > cachedBestBid_)   // O(1) cache update
+      cachedBestBid_ = order.price;
+    orderLookup_[order.id] = {true, index, --orderList.end()};
+  } else {
+    auto &orderList = askLevels_[index];
+    orderList.push_back(order);
+    activeAskLevels_[index] = true;
+    if (order.price < cachedBestAsk_)   // O(1) cache update
+      cachedBestAsk_ = order.price;
+    orderLookup_[order.id] = {false, index, --orderList.end()};
+  }
+}
+\end{lstlisting}
 
 \chapter{Matching Engine Timestamp Decomposition}
-This appendix references the matching-engine processing path and timestamp
-decomposition used for network/queue/engine breakdown in the evaluation chapter.
+The quad-timestamp strategy used to decompose end-to-end latency into network, queue, and engine components. The \texttt{sendTimestamp} is set by the client at transmission time, \texttt{receiveTimestamp} is set by the gateway on arrival, and \texttt{engineStart}/\texttt{engineEnd} bracket the matching logic.
+
+\begin{lstlisting}[caption={Latency Decomposition (src/core/matching\_engine.cpp)}]
+void MatchingEngine::processOrder(const Order &order) {
+  uint64_t engineStart = getCurrentTimeNs();
+
+  orderBook_.addOrder(order);
+  std::vector<Trade> trades = orderBook_.match();
+
+  uint64_t engineEnd = getCurrentTimeNs();
+
+  uint64_t networkLat = 0, queueLat = 0;
+  uint64_t engineLat = engineEnd - engineStart;
+  uint64_t totalLat = 0;
+
+  if (order.sendTimestamp > 0) {
+    totalLat = engineEnd - order.sendTimestamp;
+    if (order.receiveTimestamp > 0) {
+      networkLat = order.receiveTimestamp
+                   - order.sendTimestamp;
+      queueLat = engineStart
+                 - order.receiveTimestamp;
+    }
+  } else if (order.receiveTimestamp > 0) {
+    totalLat = engineEnd - order.receiveTimestamp;
+    queueLat = engineStart - order.receiveTimestamp;
+  } else {
+    totalLat = engineLat; // Direct mode
+  }
+
+  metrics_.recordLatency(totalLat);
+  if (networkLat > 0) metrics_.recordNetworkLatency(networkLat);
+  if (queueLat > 0) metrics_.recordQueueLatency(queueLat);
+  metrics_.recordEngineLatency(engineLat);
+}
+\end{lstlisting}
 
 \chapter{FIX Incremental Parser}
-This appendix references the incremental FIX parser loop used for
-partial-message buffering and checksum boundary detection in the gateway path.
+The incremental FIX parsing loop from the TCP gateway. This handles partial-message buffering for fragmented TCP streams and timestamps each order on receipt for the network latency decomposition.
+
+\begin{lstlisting}[caption={Incremental FIX Parsing (src/network/tcp\_order\_gateway.cpp)}]
+void TCPOrderGateway::clientHandler(int clientSocket) {
+  std::vector<char> buffer(4096);
+  constexpr size_t kMaxBufferBytes = 1U << 20;
+  size_t offset = 0;
+
+  while (running_) {
+    ssize_t bytesRead = recv(clientSocket,
+                             buffer.data() + offset,
+                             buffer.size() - offset, 0);
+    if (bytesRead <= 0) break;
+
+    size_t totalBytes = offset + bytesRead;
+    size_t processed = 0;
+
+    while (processed < totalBytes) {
+      size_t consumed = 0;
+      std::span<const char> data(
+          buffer.data() + processed,
+          totalBytes - processed);
+
+      auto order = FIXParser::parse(data, consumed);
+      if (consumed == 0) break; // Incomplete
+
+      if (order) {
+        order->receiveTimestamp = getCurrentTimeNs();
+        while (!orderQueue_.push(*order))
+          std::this_thread::yield();
+      }
+      processed += consumed;
+    }
+
+    if (processed < totalBytes) {
+      std::memmove(buffer.data(),
+                   buffer.data() + processed,
+                   totalBytes - processed);
+      offset = totalBytes - processed;
+    } else {
+      offset = 0;
+    }
+  }
+  close(clientSocket);
+}
+\end{lstlisting}
 
 \chapter{PoolOrderBook Match Branching}
 \label{app:pool_branching}
-This appendix references the conditional order-filling and removal logic in the
-\texttt{PoolOrderBook::match} implementation (lines 131--156). Under mixed 
-market workloads with varying order sizes, these branches result in the 
-high misprediction rate (7.36\%) documented in the evaluation.
+The conditional order-filling and removal logic in the \texttt{PoolOrderBook::match} implementation. Under mixed market workloads with varying order sizes, these branches result in the high misprediction rate (7.36\%) documented in the evaluation.
+
+\begin{lstlisting}[caption={Pool Match Branching (src/orderbooks/pool\_order\_book.cpp)}]
+std::vector<Trade> PoolOrderBook::match() {
+  std::vector<Trade> trades;
+  trades.reserve(100);
+
+  while (!bids_.empty() && !asks_.empty()) {
+    PoolLimitLevel &bidLevel = bids_.begin()->second;
+    PoolLimitLevel &askLevel = asks_.begin()->second;
+
+    if (bidLevel.price < askLevel.price)
+      break; // Spread is open
+
+    Index bidIdx = bidLevel.head;
+    Index askIdx = askLevel.head;
+
+    while (true) {
+      Order &bid = orders_[bidIdx].order;
+      Order &ask = orders_[askIdx].order;
+      Quantity qty = std::min(bid.quantity, ask.quantity);
+
+      trades.push_back({bid.id, ask.id, ask.price, qty});
+      bid.quantity -= qty;
+      ask.quantity -= qty;
+
+      Index nextBid = orders_[bidIdx].next;
+      Index nextAsk = orders_[askIdx].next;
+
+      // Stage removals to avoid use-after-free on slot recycle
+      Index bidToRemove = NULL_IDX;
+      Index askToRemove = NULL_IDX;
+
+      if (bid.quantity == 0) { bidToRemove = bidIdx; bidIdx = nextBid; }
+      if (ask.quantity == 0) { askToRemove = askIdx; askIdx = nextAsk; }
+
+      // Branch-heavy removal + pool recycle
+      if (bidToRemove != NULL_IDX) {
+        removeFromLevel(bids_, bidToRemove);
+        orderLookup_.erase(bid.id);
+        freeSlot(bidToRemove);
+      }
+      if (askToRemove != NULL_IDX) {
+        removeFromLevel(asks_, askToRemove);
+        orderLookup_.erase(ask.id);
+        freeSlot(askToRemove);
+      }
+
+      if (bids_.find(bidLevel.price) == bids_.end()
+          || asks_.find(askLevel.price) == asks_.end())
+        break;
+    }
+  }
+  return trades;
+}
+\end{lstlisting}
 
 \end{document}
+

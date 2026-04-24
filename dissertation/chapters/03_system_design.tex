@@ -1,20 +1,21 @@
 \chapter{System Design}
 \label{chap:system_design}
 
-This chapter explores the high-level design of the benchmarking suite. Our 
-system is based on a simulated exchange designed to process trades from 
-multiple concurrent clients. To understand the system from first 
-principles, we have engineered a conventional exchange pipeline mostly from 
-scratch. This multithreaded architecture parses FIX messages, passes them 
-to a custom lock-free queue for thread hand-off, and finally dispatches 
-them to the matching engine. 
+This chapter explores the high-level design of the benchmarking suite. 
+Our system is based on a simulated exchange designed to process trades from 
+multiple concurrent clients. 
+To understand the system from first principles, we have engineered a 
+conventional exchange pipeline mostly from scratch. 
+This multithreaded architecture parses FIX messages, passes them to a custom 
+lock-free queue for thread hand-off, and finally dispatches them to the 
+matching engine. 
 
 While every component in this pipeline contributes to total system latency, 
 the order book is typically the primary computational bottleneck in a 
 matching engine~\citep{gould2013lob}. As the stateful core of the exchange, 
 the order book must maintain price-time priority while processing 
 high-frequency updates, making the choice of data structure the most 
-critical factor for engine scalability~\citep{aldridge2013hft}. For this 
+significant factor for engine scalability~\citep{aldridge2013hft}. For this 
 reason, this report focuses on exploring the performance trade-offs of 
 varied order book layouts. 
 
@@ -27,7 +28,10 @@ shortcuts.
 \section{Formal Requirements}
 \label{sec:system_formal_requirements}
 To ensure academic rigour and verify that the system performs as intended, 
-we utilise a formal requirements framework. These requirements serve as 
+we use a formal requirements framework. This approach is inspired by 
+traditional software engineering methodologies for requirements engineering 
+\citep{sommerville2015} and the rigorous systems benchmarking principles 
+advocated by \citet{gregg2013systems}. These requirements serve as 
 the analytical foundation for the project and provide the objective 
 success criteria for the performance evaluation in Chapter 5. By 
 establishing these benchmarks early, we ensure that the subsequent 
@@ -99,8 +103,8 @@ environment.
 
 
 \section{High-Level Architecture}
-The exchange is designed as a modular system using the `Ports and 
-Adapters' (Hexagonal) architecture~\citep{cockburn_hexagonal}. This 
+The exchange is designed as a modular system~\citep{parnas1972} using the `Ports and 
+Adapters' (Hexagonal) architecture~\citep{velepucha2023hexagonal,cockburn_hexagonal}. This 
 approach isolates the core trading logic from external infrastructure, 
 ensuring that the system's performance characteristics remain 
 deterministic and decoupled from transport or logging overheads.
@@ -142,6 +146,7 @@ is composed of four primary modules:
     \label{fig:high_level_architecture}
 \end{figure}
 
+\clearpage
 \begin{figure}[H]
     \centering
     \resizebox{0.92\textwidth}{!}{\input{figures/hexagonal_architecture}}
@@ -183,22 +188,23 @@ usually hidden by the surrounding system.
 
 The \textbf{Gateway Mode} provides realism by including the 
 full TCP/IP stack (via loopback), FIX protocol parsing, and the 
-asynchronous hand-off between network and engine threads. Measuring the system 
-in this mode is critical for exploring the \textit{Masking Effect} proposed 
-in Hypothesis~\ref{hyp:h3}. As we will evaluate in Chapter 5, the
-constant-time overhead of these networking layers
-makes unclear the relative performance advantages of faster data structures. 
-By designing our benchmark suite with both modes, we can differentiate 
-between a structure's peak efficiency and its practical impact 
-on end-to-end latency.
+asynchronous hand-off between network and engine threads. 
+Measuring the system in this mode is critical for exploring the \textit{Masking 
+Effect} proposed in Hypothesis~\ref{hyp:h3}. 
+As we will evaluate in Chapter 5, the constant-time overhead of these 
+networking layers obscures the relative performance advantages of faster 
+data structures. 
+By designing our benchmark suite with both modes, we can differentiate between 
+a structure's peak efficiency and its practical impact on end-to-end latency.
 
 \section{Concurrency and Threading Strategy}
 To maintain low latency, the system must separate high-latency I/O 
 operations - such as network packet polling, TCP/IP stack traversal, and 
-FIX message parsing - from the core matching engine. This multi-threaded 
-architecture prevents slower network components from blocking the execution 
-of trades, which is a standard pattern for high-performance sequence 
-processing in industrial matching engines~\citep{thompson2011disruptor}.
+FIX message parsing - from the core matching engine. 
+This multi-threaded architecture prevents slower network components from 
+blocking the execution of trades, which is a standard pattern for 
+high-performance sequence processing in industrial matching 
+engines~\citep{thompson2011disruptor}.
 
 At the core of the concurrency strategy is the \textbf{Producer-Consumer} 
 hand-off. The Gateway thread (Producer) handles the I/O operations 
@@ -211,9 +217,10 @@ Multi-Producer Multi-Consumer (MPMC) adapter from the \texttt{moodycamel}
 library.
 
 To ensure deterministic performance, we use \textbf{CPU Pinning} (Thread 
-Affinity). By pinning the engine thread to a specific physical core, we 
-prevent the operating system from migrating the process across different 
-CPUs. This elimination of context-switching jitter and cache-migration 
-overhead is vital for mitigating the \textit{Observer Effect}; it ensures 
-that our measurements represent 'bare-metal' performance as closely as 
-possible within a Linux environment.
+Affinity). 
+By pinning the engine thread to a specific physical core, we prevent the 
+operating system from migrating the process across different CPUs. 
+This elimination of context-switching jitter and cache-migration overhead is 
+vital for mitigating the \textit{Observer Effect}. 
+It ensures that our measurements represent 'bare-metal' performance as closely 
+as possible within a Linux environment.

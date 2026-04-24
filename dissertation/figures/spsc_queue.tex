@@ -25,7 +25,7 @@
 
     \end{tikzpicture}%
     }
-    \caption{A lock-free Single-Producer Single-Consumer (SPSC) ring buffer. The producer actively writes to the Head pointer while the consumer asynchronously trails behind reading from the Tail pointer. Because the two threads concurrently modify distinct atomic variables, they operate entirely lock-free. So long as the underlying logic utilizes safe modulo arithmetic to wrap edges, the system remains infinitely scalable for isolated threads.}
+    \caption{A lock-free Single-Producer Single-Consumer (SPSC) ring buffer. The producer actively writes to the Head pointer while the consumer asynchronously trails behind reading from the Tail pointer. Because the two threads concurrently modify distinct atomic variables, they operate entirely lock-free. So long as the underlying logic uses safe modulo arithmetic to wrap edges, the system remains infinitely scalable for isolated threads.}
     \label{fig:spsc_queue}
     \vspace{1em}
 \end{figure}

@@ -19,13 +19,13 @@
 
 % Connections
 \draw [arrow] (start) -- (fill_check);
-\draw [arrow] (fill_check) -| node[anchor=south east, xshift=-0.2cm] {No (Partial)} (partial);
-\draw [arrow] (fill_check) -| node[anchor=south west, xshift=0.2cm] {Yes (Full)} (full);
+\draw [arrow] (fill_check) -| node[anchor=south east, xshift=-0.5cm] {No (Partial)} (partial);
+\draw [arrow] (fill_check) -| node[anchor=south west, xshift=0.5cm] {Yes (Full)} (full);
 \draw [arrow] (partial) |- (end);
 \draw [arrow] (full) |- (end);
 
 % Annotations
-\node (prob) [text width=4cm, text centered, font=\small\itshape, right=0.5cm of fill_check] 
+\node (prob) [text width=4cm, text centered, font=\small\itshape, right=0.8cm of full, yshift=-0.5cm] 
     {Mixed Scenario:\\$\sim$50\% Probability\\$\implies$ \textbf{Branch Miss}};
 
 \draw [dashed, gray] ($(partial.north west)+(-0.2,0.2)$ ) rectangle ($(full.south east)+(0.2,-0.2)$ );

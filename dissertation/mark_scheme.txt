@@ -1,0 +1,704 @@
+CONTENTS Third Year Project Assessment
+Third Year Project Assessment
+1 Proportions 2 Summary of Assessments 3 Report 3.1 3.2 3.3 3.4 3.5 Contents
+2
+2
+3
+Abstract and Introduction (15%) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+Background and Theory (25%) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+Technical Quality, Methodology and Evaluation (35%) . . . . . . . . . . . . . . . . . . . . . . . . 6
+Summary and Conclusions (15%) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+Presentation, Structure and Language (10%) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+4 Screencast 9
+4.1 4.2 4.3 4.4 Demonstrates the Achievements (25%) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+Use of the Medium (25%) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+Audience (25%) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+Structure and Flow (25%) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+5 Achievements 14
+5.1 5.2 5.3 Complexity (33%) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+Scale (33%) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+Achievement (34%) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+26 January 2025 Page 1 of 17
+2 SUMMARY OF ASSESSMENTS Third Year Project Assessment
+1 Proportions
+Aspect Report Achievements Screencast Proportion (%)
+55
+30
+15
+Students will also take part in a Q&A session with the second marker only. This will give the student the
+opportunity to expand on their achievements on the project.
+2 Summary of Assessments
+Twelve marking criteria are proposed:
+Report Abstract and Introduction
+Background and Theory
+Technical Quality, Methodology and Evaluation
+Summary and Conclusions
+Presentation, Structure and Language
+Screencast Demonstrates the Achievements
+Use of the Medium
+Audience
+Structure and Flow
+Achievements Complexity
+Scale
+Achievement
+26 January 2025 Page 2 of 17
+3 REPORT Third Year Project Assessment
+3 Report
+Reports are expected to be between 10,000 and 15,000 words long. Submissions significantly outside these
+guidelines will be penalised (see the “Presentation, structure and language” criteria).
+For a small number of projects the given word limit may not be appropriate, in particular if the report is the
+only deliverable, or there is significant theoretical content. A student intending to submit a report longer than
+15,000 words must have permission from their supervisor prior to submission to avoid this penalty.
+Supervisors should get the students to summarise their work concisely – the above is not a get-out clause for
+students to avoid doing that work. It should be justified in terms of the nature of the project, rather than ‘my
+student has done a lot of good work and they should be allowed to go on about it’.
+The assessment criteria attempt to accommodate different types of project (research, software development,
+teaching, etc.). For this reason, not all of the points mentioned will apply to a particular project. This will be
+taken into account in the marking.
+References, appendices and figure/table captions are not included in the word count.
+No tool is specified to produce the report (for example, L A T EXor Microsoft Word), but the report’s appearance
+will be assessed under the “Presentation, structure and language” criteria. If using L A T EX, consider using your
+university log-on for Overleaf (https://www.overleaf.com/). This allows you to give your supervisor access
+to your document to provide help.
+The report should be submitted in PDF format only.
+IMPORTANT Only the report itself is assessed in these criteria. The actual produced artefacts or the
+substance of a research project are assessed under Achievements.
+Guidance for markers on multi-item assessments (for example, ‘Abstract and Introduction’): The scores
+for each item in an assessment can be averaged. For example, you may think that the abstract deserves a mark
+of 40% and the introduction 60%; consequently, the average of 50% can be given.
+26 January 2025 Page 3 of 17
+3 REPORT Third Year Project Assessment
+3.1 Abstract and Introduction (15%)
+The abstract is expected to provide a precise and concise summary of the project including key results and/or
+achievements.
+The introduction should set the scene and introduce the subject area of the work. This section should include a
+description of and motivation for the project. Aims and objectives, and success criteria should be given. A brief
+description of the evaluation strategy should be included. The structure of the report is normally described.
+The introduction will not contain any background research – its purpose is to introduce the project to the
+reader.
+Key assessment points:
+• Demonstration of understanding the project
+• Ability to explain ideas
+• Appropriate level of technical detail
+• Aims and objectives are stated
+• Abstract summarises project and states key outcomes
+• Summary of evaluation strategy
+Failing: 00 – 20 – 39
+There is no abstract. The introduction mentions
+that a project has been carried out, but is not very
+informative.
+Poor: 40 – 45 – 49
+The abstract indicates a project has been carried
+out. The introduction explains some of the pro-
+ject’s aims.
+Below Expectations: 50 – 55 – 59
+The abstract indicates some achievements of the
+project and mentions a context. The introduction
+explains the project and its aims.
+Expected: 60 – 65 – 69
+The abstract gives a good overview of the project’s
+achievements and describes the setting. The intro-
+duction explains the aims of the project within a
+wider context and indicates how the project might
+be evaluated.
+Above Expectations: 70 – 75 – 79
+The abstract gives a very good overview of the pro-
+ject’s main achievements and explains the setting.
+The introduction sets the scene for the project and
+its aims and explains these very well and points at
+an evaluation strategy.
+Excellent: 80 – 85 – 89
+The abstract gives a thorough overview covering
+most of the project’s achievements and explains
+its setting very well. The introduction explains the
+setting of the project, supported by suitable liter-
+ature, derives the aims from there, and explains
+how an evaluation strategy was chosen and why.
+Outstanding: 90 – 95 – 100
+The abstract gives a precise and comprehens-
+ive overview of the project’s achievements in its
+proper context. The introduction gives a compre-
+hensive and precise account of the project’s set-
+ting firmly based on peer-reviewed literature and
+derives an evaluation strategy derived from such
+literature.
+26 January 2025 Page 4 of 17
+3 REPORT Third Year Project Assessment
+3.2 Background and Theory (25%)
+This should include a detailed description and should demonstrate an understanding of the topic/problems,
+and an awareness of the solutions to the technical/scientific challenges. Suitable background material and
+appropriate good quality references should be given that put the work of the project in context. In the main,
+the references should come from peer-reviewed publications.
+Any theory (or other detail) that is presented should be relevant, should demonstrate an understanding of
+the topic, and the material provided here (and in any descriptions of the design) should allow the work to be
+reproduced by a peer. Any background that is given should be relevant to the project and not be just ‘padding’.
+Key assessment points:
+• Awareness of the subject area
+• Understanding of the subject area
+• Definitions and concepts are described
+• Use of peer-reviewed references
+Failing: 00 – 20 – 39
+The background of the project is barely men-
+tioned.
+Poor: 40 – 45 – 49
+There is very little indicating the project’s setting.
+A weak understanding of the subject area is appar-
+ent.
+Below Expectations: 50 – 55 – 59
+An attempt is made to describe the setting of the
+project in some detail. A limited understanding of
+the subject area is demonstrated.
+Expected: 60 – 65 – 69
+There is a description of the setting of the project
+based on the literature without major omissions.
+The content and relevance of the included literat-
+ure is mostly understood.
+Above Expectations: 70 – 75 – 79
+The setting of the project is described based on the
+scientific literature in a balanced and comprehens-
+ive way. The content and relevance of the included
+literature is understood.
+Excellent: 80 – 85 – 89
+The setting of the project is described, based in
+the majority on peer-reviewed literature with an
+appropriate level of detail covering all relevant de-
+velopments. The content and relevance of the in-
+cluded literature is very well understood.
+Outstanding: 90 – 95 – 100
+There is a precise and exhaustive description of the
+project’s setting firmly based on peer-reviewed lit-
+erature. An excellent understanding of the content
+and relevance of the included literature is demon-
+strated.
+26 January 2025 Page 5 of 17
+3 REPORT Third Year Project Assessment
+3.3 Technical Quality, Methodology and Evaluation (35%)
+This assesses the description of the main output from the project (for example, software, research, hardware,
+teaching concepts).
+Where appropriate, the student has used standard accepted methods of describing designs (e.g. architecture
+diagrams, UML, database schemas, algorithms, mathematics, etc.). Alternatively, an attempt has been made
+to formalise the description.
+This part should cover steps taken to evaluate, test or compare the work to the state of the art. Does the
+student demonstrate a level of understanding of the theory, design and technical aspects of the project? Key
+decisions should be highlighted and justified.
+An evaluation of the work should be included. This includes correctness, usability, fitness for purpose, ranking
+with similar work, and so on. It may include manual and automated testing, user surveys, and some sort
+of performance metric, for example. Has the student demonstrated a suitable level of critical analysis and
+evaluation?
+As many different types of project can be performed, not all of the criteria here will apply to every project.
+The markers will take into account what is relevant for a particular project type. In particular, a report will
+not be marked down for a missing criteria that is not appropriate for the project type.
+Key assessment points:
+• Understanding of the material
+• Technical quality
+• Requirements analysis
+• Use of design methodologies as appropriate
+• Testing as appropriate
+• Suitable evaluation of the work
+• Critical analysis
+Failing: 00 – 20 – 39
+There is very little content, and what there is in-
+dicates a lack of effort or lack of understanding.
+Poor: 40 – 45 – 49
+An effort has been made to describe the technical
+aspects of the project. However, it may not be
+very complete, thorough or clear.
+Below Expectations: 50 – 55 – 59
+The technical aspects of the project have been de-
+scribed using diagrams and so on, where appropri-
+ate. However the detail of the testing and evalu-
+ation is limited. The student has clearly described
+the design of the project but checking its correct-
+ness and comparing to other work was a bit of an
+afterthought.
+Expected: 60 – 65 – 69
+The technical aspects have been described well and
+a good understanding is demonstrated. Testing
+and evaluation is well thought-through and de-
+scribed. Additionally, there are few ‘missing’ tests.
+There may be some questionable design and test-
+ing decisions, but overall, the report could be used
+to reproduce the work.
+Above Expectations: 70 – 75 – 79
+The technical aspects have been described very
+well and a very good understanding is demon-
+strated. A level of formality has been applied (via
+accepted design principles, for example) allowing
+for a concise but thorough description.
+Testing and evaluation is very well thought-
+through and described. The report could be used
+to reproduce the work.
+Excellent: 80 – 85 – 89
+In addition to the previous band:
+The designs are very well considered, clear, and
+easy to understand. The output has been eval-
+uated to a very high level (testing, question-
+naires, comparison with similar work). The stu-
+dent demonstrates a very thorough understanding
+of the technical details of their work and has been
+able to explain this very clearly so that the reader
+can also understand it.
+Outstanding: 90 – 95 – 100
+In addition to the previous band:
+There is very little to fault. The writing demon-
+strates an extremely thorough understanding of
+the project work and the field in which it sits.
+Explanations of the technical details, work of the
+project and evaluation are exceptional.
+26 January 2025 Page 6 of 17
+3 REPORT Third Year Project Assessment
+3.4 Summary and Conclusions (15%)
+This section includes the conclusions and a summary of achievements, reflection, identification of improvements,
+and further work. The conclusions presented must be based on the work done in the project. The suggested
+further work should be substantial, not simply ‘more of the same’.
+Key assessment points:
+• Summary of the work
+• Discussion of achievements
+• Critical reflection
+• Ideas for further work
+• Alignment with abstract and introduction
+Failing: 00 – 20 – 39
+Little attempt has been made to summarise the
+work and/or draw conclusions.
+Poor: 40 – 45 – 49
+The section is likely to be brief and not provide
+the reader with a clear idea as to what has been
+done or achieved. Any suggestions for future work
+will be limited in scope.
+Below Expectations: 50 – 55 – 59
+Some effort has been made to draw the work of the
+project together but it is rather superficial. There
+is not much in the way of critical reflection. Ideas
+for further work are not very ambitious.
+Expected: 60 – 65 – 69
+The work has been well summarised. There is a
+critical analysis of the work and a number of im-
+provements that can be made have been given. A
+couple of ideas for further work are detailed which
+have some ambition but are not too far removed
+from the scope of the work.
+Above Expectations: 70 – 75 – 79
+The work has been very well summarised. There
+is a critical analysis of the work in a thorough and
+honest way. The ability to see weaknesses is ap-
+parent and good solutions to problems are given.
+Several ideas for future work are detailed which
+are ambitious, relevant and well thought out.
+Excellent: 80 – 85 – 89
+In addition to the previous band:
+A good knowledge of the field has allowed for sev-
+eral ideas for future work which can realistically
+take the project further.
+Outstanding: 90 – 95 – 100
+The summary and conclusions are excellent in pre-
+cision and coverage. It is clear that the student has
+mastered the material and has given a definitive
+set of conclusions and a well thought-through plan
+for future work to reach definitive conclusions.
+26 January 2025 Page 7 of 17
+3 REPORT Third Year Project Assessment
+3.5 Presentation, Structure and Language (10%)
+This assesses the organisation and structure of the report. Is the report laid out in a logical style with appropriate
+chapters, sections and subsections? Are the references complete and properly formatted? Are figures, tables
+and equations properly numbered and appropriate for the work? Is the report attractive (good mathematics,
+images of suitable resolution or scalable graphics, figures of a reasonable size)? Does the report demonstrate a
+proper use of the English language, how comprehensible is the prose, how clear are explanations, are there any
+spelling and punctuation errors, is the report professionally presented?
+The report should be between 10,000 – 15,000 words in length. This does not include the abstract, references
+and appendices.
+Key assessment points:
+• Structure
+• Layout and flow
+• Formatting of citations and references
+• Numbering of chapters, sections, figures, etc.
+• Suitable figures and tables
+• Grammar, spelling, punctuation
+• Report length: 10,000 – 15,000 words, unless supervisor allows exemption
+Failing: 00 – 20 – 39
+The length guidelines have been ignored (outside
+of the range 8,500 – 16,500). The structure is not
+logical and/or does not flow well. The writing is
+poor with numerous mistakes on most pages.
+Poor: 40 – 45 – 49
+Any deviation from the length guidelines is minor
+(within the range 8,500 – 16,500). All of the expec-
+ted elements are present, but the writing shows de-
+ficiencies on a larger scale than the occasional typo
+or badly worded sentence. Very little attention has
+been paid to formatting and attractiveness of the
+document.
+Below Expectations: 50 – 55 – 59
+Any deviation from the length guidelines is very
+minor. Structure is adequate with all of the ex-
+pected elements present. The writing is basic-
+ally sound but errors are noticeable. Formatting
+of citations and references are inconsistent, unat-
+tractive or make reading difficult. An effort has
+been made to provide information in the form of
+figures and tables.
+Expected: 60 – 65 – 69
+The length is within the guidelines. The struc-
+ture and presentation of the report is good. The
+chapters (sections) are appropriate for the work.
+The references are mostly correctly formatted.
+The writing might not be perfect but overall is en-
+tirely readable. Technical terms and abbreviations
+will be mostly defined. The writing is supplemen-
+ted by an appropriate amount of figures and tables,
+and they are easily interpreted, with reasonable
+captions. Figures and tables are mostly referred
+to in the text.
+Above Expectations: 70 – 75 – 79
+In addition to the previous band:
+The writing is perfectly readable with at most a
+few minor errors. The structure and presentation
+of the report is very logical and clear. The ref-
+erences are almost always correctly formatted. A
+good effort has been made to complement the text
+with correct mathematics typesetting, good qual-
+ity images and figures, figures of a suitable size,
+and so on. Technical terms and abbreviations are
+always defined. Figures and tables are always re-
+ferred to in the text.
+Excellent: 80 – 85 – 89
+In addition to the previous band:
+The writing is very readable with only a few sen-
+tences causing a re-read due to the use of lan-
+guage. The references are always correctly format-
+ted. A professional ‘eye’ is demonstrated with
+regards to mathematics typesetting, figures and
+tables. There are not many occasions when the
+layout and formatting causes annoyance to the
+reader.
+Outstanding: 90 – 95 – 100
+There is very little to fault. A broad vocabulary
+and a thorough understanding of the English lan-
+guage is evident. Beautifully presented.
+26 January 2025 Page 8 of 17
+4 SCREENCAST Third Year Project Assessment
+4 Screencast
+The screencast is the student’s opportunity to sell their work in an interesting and entertaining way. The
+student might imagine that they own a small company and are producing an online sales video to promote
+their work/product. It might consist of a recorded Powerpoint-type presentation with a voice-over, but a high-
+quality advertising-type production will gain the higher marks in ‘Use of the medium’. However, the viewer
+(marker, third-year student) is one that is interested in the technical aspects and achievements of the project.
+The screencast might also include a brief demonstration of any produced artefacts (but it should be made clear
+whether or not demonstrations are of the student’s own work). The total length of the screencast should be in
+the 7 – 9 minute range.
+Part of the reason for doing a screencast is because lots of companies now use social media for promoting their
+products and services. Being creative and entertaining in your presentations will show yourself in the best light,
+be this for selling your company’s products or for selling yourself to a potential employer.
+The screencast should have a logical flow and consist of a beginning, a middle and end. It is used to give
+someone a quick introduction to your project and what you have achieved. The markers will probably watch
+the screencast before reading your report, so it should help them to get an understanding of what your project
+is about.
+26 January 2025 Page 9 of 17
+4 SCREENCAST Third Year Project Assessment
+4.1 Demonstrates the Achievements (25%)
+The achievements of the project should be described. This may include a brief demonstration of any artefact
+or the results of any research.
+Key assessment points:
+• Gives context for the project
+• Demonstration of achievements
+• Clarity of explanation
+• Supporting theory
+Failing: 00 – 20 – 39
+No context for the project is given. It is difficult
+to tell what has been achieved. No theory is dis-
+cussed.
+Poor: 40 – 45 – 49
+Some context is given. It is clear that a project
+has been carried out that does something. A little
+background theory is mentioned.
+Below Expectations: 50 – 55 – 59
+The topic area of the project is clear and one may
+see some of what has been done. Theory is touched
+on that has relevance to the project.
+Expected: 60 – 65 – 69
+A context is provided for the project and the main
+achievements are described. Some relevant back-
+ground theory and how it relates to the project is
+discussed.
+Above Expectations: 70 – 75 – 79
+The main achievements of the project are well set
+within a context. The underlying theory is de-
+scribed and is clearly explained.
+Excellent: 80 – 85 – 89
+A comprehensive account of the project’s achieve-
+ment within a wider context is given which inter-
+weaves well with some of the underlying theory.
+Explanation is clear.
+Outstanding: 90 – 95 – 100
+The scene for the project is set and a precise and
+concise account of the achievements is well suppor-
+ted by some of the underlying theory. Explanation
+is very clear.
+26 January 2025 Page 10 of 17
+4 SCREENCAST Third Year Project Assessment
+4.2 Use of the Medium (25%)
+This assesses how well the medium of a video has been used. The screencast may be a set of slides with a
+voice-over, a TED-type talk (interspersed with slides), an advertising-type production with multiple scenes, etc.
+A clear, interesting video with some originality and creativity can be produced within a reasonable time.
+From the student’s point of view, a balance should be made between the time spent producing the screencast
+and the number of marks available.
+Key assessment points:
+• Use of visuals
+• Audio quality and sound level
+• Editing as appropriate (e.g. removal of long pauses)
+• Creativity
+• Originality
+• Professionalism
+Failing: 00 – 20 – 39
+There is a video but very little effort has been put
+in. Sound is at a such a low level that makes listen-
+ing almost impossible.
+Poor: 40 – 45 – 49
+There is a video with visuals and audio. The stu-
+dent has put little effort into designing the content
+and appearance of the video. Editing is likely to
+be non-existent.
+Below Expectations: 50 – 55 – 59
+The visuals help the viewer understand the nar-
+rative and the audio delivers said narrative. Some
+effort has been put into keeping the viewer inter-
+ested.
+Expected: 60 – 65 – 69
+There is a video with suitable visuals and audio
+at a consistent level that is always clear. The de-
+scription is relevant to the visuals. The content
+is interesting and perhaps entertaining. Unneces-
+sary pauses have been cut from the recording. Au-
+dio levels are good and few verbal mistakes occur.
+Slides with a voice-over are acceptable at this level
+as long as a good effort has been put into the cre-
+ation of the slides.
+Above Expectations: 70 – 75 – 79
+The visuals have been well chosen to suit the nar-
+rative and significantly strengthen the account; the
+audio is in addition well-delivered. Creativity has
+been demonstrated by providing something more
+than slides with a voice-over. Perhaps a mood is
+created with subtle background music (if the stu-
+dent intends to publish their recording, royalty-
+free or public-domain music should be used).
+Excellent: 80 – 85 – 89
+In addition, the visuals look professional and the
+chosen wording reaches a professional standard. A
+high-level of creativity and originality is shown and
+the recording is equivalent to a good-quality video
+on video-sharing website.
+Outstanding: 90 – 95 – 100
+In addition, the screencast combines the audio and
+visuals into a seamless whole. The production is
+entertaining and close in quality to what might be
+produced professionally.
+26 January 2025 Page 11 of 17
+4 SCREENCAST Third Year Project Assessment
+4.3 Audience (25%)
+The audience for the screencast is a typical third-year student. The technical details should be aimed at a
+third-year who has not studied the particular field at third-year level. For this reason, jargon and abbreviations
+may have to be explained. However, the content should not be over-simplified.
+Key assessment points:
+• Awareness of audience
+• Appropriate level of technical detail
+Failing: 00 – 20 – 39
+The screencast takes no notice of its audience.
+It is pitched at a person much below, or much
+above, the typical final-year computer science un-
+dergraduate.
+Poor: 40 – 45 – 49
+An attempt has been made to address an audience.
+Below Expectations: 50 – 55 – 59
+The screencast is mostly understandable by the
+target audience.
+Expected: 60 – 65 – 69
+The screencast is suitable for the target audience.
+It does not shy away from some technical material
+and makes some attempt to simplify the material
+for those with no knowledge of the field.
+Above Expectations: 70 – 75 – 79
+In addition, more relevant technical material is
+provided and explained at a suitable level for the
+audience but could be done more concisely.
+Excellent: 80 – 85 – 89
+In addition, the overall narrative connects with
+material the target audience already knows.
+Outstanding: 90 – 95 – 100
+In addition, the narrative is utterly compelling for
+the target audience.
+26 January 2025 Page 12 of 17
+4 SCREENCAST Third Year Project Assessment
+4.4 Structure and Flow (25%)
+The screencast should be well structured. There will be a beginning, a middle, and an end (brief introduction,
+the main content, and a brief conclusion). It should flow well with each discussion point following on from
+previous points. The text content on the screen should complement the voice-over – the reader cannot read
+more than is possible in the duration of a slide, for example. There are exceptions to this: the slide may contain
+a table of results, but the student is just highlighting particular values.
+Key assessment points:
+• Structure
+• Overall narrative
+• Clarity of speech, appropriate pace
+• Entertainment
+Failing: 00 – 20 – 39
+The length guidelines have been ignored (outside
+the range 6 – 10 minutes). There is no obvious
+structure to the presentation.
+Poor: 40 – 45 – 49
+Deviation from the length guidelines is minor (out-
+side the range 6.5 – 9.5 minutes). There is some
+structure – it has a beginning, a middle and an
+end, but less structure within these parts.
+Below Expectations: 50 – 55 – 59
+Deviation from the length guidelines is minor (out-
+side the range 6.5 – 9.5 minutes). There is an
+overall narrative but the flow is sometimes a bit
+haphazard. Pace may be too fast or too slow.
+Expected: 60 – 65 – 69
+The length is within the guidelines (7 – 9 minutes).
+There is a clear structure with introduction and
+conclusions. The viewer is taken clearly through
+the narrative. Pace is good.
+Above Expectations: 70 – 75 – 79
+The length is within the guidelines (7 – 9 minutes).
+The structure and flow is chosen to support the
+overall narrative very well. The viewer can easily
+follow the narrative and is kept interested.
+Excellent: 80 – 85 – 89
+In addition, the structure and flow is ideally paced
+to deliver a lot of information in a very clear way.
+The viewer is kept interested and entertained.
+Outstanding: 90 – 95 – 100
+In addition, the viewer is sad to have reached the
+end of the screencast.
+26 January 2025 Page 13 of 17
+5 ACHIEVEMENTS Third Year Project Assessment
+5 Achievements
+The Achievement mark is based on the intellectual effort that has been put into the project work itself (not
+the report and the screencast). For instance, a student may have put great effort into their work and produced
+something that is complex and/or novel, but they may not necessarily be able to express themselves effectively
+in the report and screencast.
+26 January 2025 Page 14 of 17
+5 ACHIEVEMENTS Third Year Project Assessment
+5.1 Complexity (33%)
+This assesses the difficulty of the work. For example, does the work basically consist of simple web pages or
+does it involve the development of original algorithms to solve a difficult problem?
+The score given in the Complexity assessment is independent of the Scale assessment – the work might get a
+low Complexity score for the development of simple html pages, but if many such web pages are created to
+build a large website, then the Scale score can be higher.
+Key assessment points:
+• Difficulty level of work
+• Use of existing ideas
+• Originality
+Failing: 00 – 20 – 39
+The project only relies on material from the Com-
+puting A-level, or similar.
+Poor: 40 – 45 – 49
+The project relies only on material taught in the
+first two years of the degree programme.
+Below Expectations: 50 – 55 – 59
+The project builds on material similar to what is
+taught in a third year unit.
+Expected: 60 – 65 – 69
+The project brings together ideas from several
+areas, or delves fairly deeply into one technical
+area.
+Above Expectations: 70 – 75 – 79
+The project solves a significant problem or com-
+bines ideas from several areas in an interesting way.
+The project makes some use of material from the
+scientific literature.
+Excellent: 80 – 85 – 89
+Additionally the project builds on material from
+the scientific literature.
+Outstanding: 90 – 95 – 100
+Additionally, the project solves a long-standing
+hard problem or combines ideas from several areas
+in an original way.
+26 January 2025 Page 15 of 17
+5 ACHIEVEMENTS Third Year Project Assessment
+5.2 Scale (33%)
+The Scale criteria assesses the amount of work that has gone into the project work itself. Could a good student
+have done this work in few weeks, or has an obviously large amount of time and effort gone into the project (in
+reading, thinking, experimenting, designing, developing, testing, and so on)?
+The score given in the Complexity assessment is independent of the Scale assessment – the work might get a
+low Complexity score for the development of simple html pages, but if many such web pages are created to
+build a large website, then the Scale score can be higher.
+Key assessment points:
+• Amount of work
+• Difficulties overcome
+• Acquiring of knowledge
+• Breadth of coverage (e.g. in experiments, development or testing)
+Failing: 00 – 20 – 39
+The amount work performed was minimal.
+Poor: 40 – 45 – 49
+It can be seen that something has been produced,
+but the time expended was minimal. For example,
+software may have been created that could have
+come from modified snippets of code on the inter-
+net.
+Below Expectations: 50 – 55 – 59
+The output of the project took a reasonable
+amount of time to produce, but there is not much
+evidence that effort was put into overcoming any
+difficulties or trying out different methods.
+Expected: 60 – 65 – 69
+The project took a good amount of time to achieve
+(including any learning, research, implementation
+and/or analysis and creativity). It can be seen
+that there various difficulties have been analysed
+and overcome.
+Above Expectations: 70 – 75 – 79
+A considerable effort has been put into the pro-
+ject. Difficult problems have been overcome and
+the solutions have been demonstrated in some way
+so that they can be repeated.
+Excellent: 80 – 85 – 89
+In addition, there has been some original thought.
+The ideas behind the project are not just a repeat
+of some existing work – there has been a good
+effort to analyse and build upon other works. The
+outputs clearly show the amount of work involved
+and they are complete and polished.
+Outstanding: 90 – 95 – 100
+In addition, there is evidence that ownership has
+been taken of the problems. More reading has
+been performed in and around the topic so that
+a full understanding has been developed of where
+the work sits. It is obvious that something much
+greater could be delivered given more time.
+26 January 2025 Page 16 of 17
+5 ACHIEVEMENTS Third Year Project Assessment
+5.3 Achievement (34%)
+The report will have described the aims of the project and discussed if, and how well, the aims were met. The
+stated aims should be ones that would take time and effort to achieve.
+This criteria assesses how well the aims were met. It combines how difficult the stated aims were and how much
+has been achieved trying to meet those aims. Simple aims that were easily met receive a relatively low score.
+Difficult aims that were not met, but a lot was achieved trying to meet them, may score relatively highly. Very
+difficult aims that were met will score even higher.
+If some of the aims stated at the start of the project were not addressed, it may be tempting to completely
+ignore those aims in the report and screencast. This is valid, although it should be noted that it may mean
+that the remaining aims are not substantial enough.
+Key assessment points:
+• Achievements
+• Difficulty of achievements
+Failing: 00 – 20 – 39
+The project fails to meet most of the original aims.
+Poor: 40 – 45 – 49
+The project delivers some of the set aims.
+Below Expectations: 50 – 55 – 59
+The project meets most of the set aims, or there
+is a compulsive reason why it did not.
+Expected: 60 – 65 – 69
+For all the the set aims the project either met them
+or there is a well-documented compulsive reason
+why it did not.
+Above Expectations: 70 – 75 – 79
+In addition, the given objectives were challenging.
+Excellent: 80 – 85 – 89
+In addition, the presented solution is convincing
+and based on suitable principles from the literat-
+ure.
+Outstanding: 90 – 95 – 100
+In addition, as far as developed, the provided solu-
+tion is hard to improve upon.
+26 January 2025 Page 17 of 17

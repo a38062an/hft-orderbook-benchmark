@@ -2,13 +2,13 @@
 
 | Scenario | Best Add Book | Add Latency (ns) | Best Cancel Book | Cancel Latency (ns) | Best Lookup Book | Lookup Latency (ns) |
 |---|---:|---:|---:|---:|---:|---:|
-| tight_spread | pool | 18.61 | n/a | n/a | pool | 14.95 |
-| fixed_levels | pool | 16.06 | n/a | n/a | hybrid | 12.89 |
-| mixed | array | 13.93 | array | 12.20 | hybrid | 12.17 |
-| high_cancellation | array | 14.26 | array | 12.07 | array | 12.28 |
-| worst_case_fifo | array | 14.29 | n/a | n/a | array | 12.41 |
-| sparse_extreme | array | 14.15 | n/a | n/a | pool | 12.37 |
-| dense_full | array | 14.47 | n/a | n/a | pool | 12.46 |
+| tight_spread | array | 48.01 | n/a | n/a | array | 32.32 |
+| fixed_levels | array | 45.80 | n/a | n/a | array | 31.98 |
+| mixed | array | 46.14 | array | 46.30 | array | 31.74 |
+| high_cancellation | array | 46.44 | array | 46.38 | array | 31.69 |
+| worst_case_fifo | array | 49.24 | n/a | n/a | array | 34.36 |
+| sparse_extreme | array | 48.40 | n/a | n/a | array | 32.59 |
+| dense_full | array | 45.06 | n/a | n/a | array | 31.60 |
 
 Notes:
 - Add corresponds to Insert_ns, Cancel to Cancel_ns, and Lookup to Lookup_ns.

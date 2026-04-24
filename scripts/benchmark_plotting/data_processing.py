@@ -52,11 +52,127 @@ def load_results(csv_path: Path) -> pd.DataFrame:
         raise FileNotFoundError(f"Results file not found: {csv_path}")
 
     results_dataframe = pd.read_csv(csv_path)
+
+    # Support both legacy title-case schema and newer lowercase schema.
+    column_aliases = {
+        "mode": "Mode",
+        "book": "Book",
+        "scenario": "Scenario",
+        "command": "Command",
+        "latency_ns": "Latency_ns",
+        "latency_stddev_ns": "LatencyStdDev_ns",
+        "p99_ns": "P99_ns",
+        "p99_stddev_ns": "P99StdDev_ns",
+        "max_ns": "Max_ns",
+        "throughput": "Throughput",
+        "throughput_stddev": "ThroughputStdDev",
+        "network_ns": "Network_ns",
+        "queue_ns": "Queue_ns",
+        "engine_ns": "Engine_ns",
+        "insert_ns": "Insert_ns",
+        "cancel_ns": "Cancel_ns",
+        "lookup_ns": "Lookup_ns",
+        "match_ns": "Match_ns",
+        "producers": "Producers",
+        "dropped": "Dropped",
+        "peakdepth": "PeakDepth",
+        "mpscque_ns": "MpscQue_ns",
+        "mpscquep99_ns": "MpscQueP99_ns",
+        "mpsceng_ns": "MpscEng_ns",
+        "mpscengp99_ns": "MpscEngP99_ns",
+    }
+    rename_map = {}
+    for source_column, target_column in column_aliases.items():
+        if source_column in results_dataframe.columns and target_column not in results_dataframe.columns:
+            rename_map[source_column] = target_column
+    if rename_map:
+        results_dataframe = results_dataframe.rename(columns=rename_map)
+
+    required_columns = ["Mode", "Book", "Scenario"]
+    missing_required = [column for column in required_columns if column not in results_dataframe.columns]
+    if missing_required:
+        raise KeyError(f"Missing required columns in results CSV: {missing_required}")
+
     for column_name in NUMERIC_COLUMNS:
         if column_name in results_dataframe.columns:
             results_dataframe[column_name] = pd.to_numeric(
                 results_dataframe[column_name], errors="coerce"
             ).fillna(0.0)
+
+    # Normalize categorical text columns to lowercase for stable ordering.
+    results_dataframe["Mode"] = results_dataframe["Mode"].astype(str).str.lower()
+    results_dataframe["Book"] = results_dataframe["Book"].astype(str).str.lower()
+    results_dataframe["Scenario"] = results_dataframe["Scenario"].astype(str).str.lower()
+
+    # Newer campaign exports store producer count only in the command string.
+    # Recover Producers before replicate aggregation so MPSC rows are not
+    # incorrectly collapsed across 1/2/4/8 producers.
+    if "Producers" not in results_dataframe.columns and "Command" in results_dataframe.columns:
+        extracted = results_dataframe["Command"].astype(str).str.extract(r"--producers\s+(\d+)", expand=False)
+        if extracted.notna().any():
+            results_dataframe["Producers"] = pd.to_numeric(extracted, errors="coerce")
+
+    if "Producers" in results_dataframe.columns:
+        results_dataframe["Producers"] = pd.to_numeric(
+            results_dataframe["Producers"], errors="coerce"
+        )
+
+    # Fallback mapping for MPSC component fields when dedicated MPSC columns
+    # are absent in the CSV schema.
+    if "MpscQue_ns" not in results_dataframe.columns and "Queue_ns" in results_dataframe.columns:
+        results_dataframe["MpscQue_ns"] = results_dataframe["Queue_ns"]
+    if "MpscEng_ns" not in results_dataframe.columns and "Engine_ns" in results_dataframe.columns:
+        results_dataframe["MpscEng_ns"] = results_dataframe["Engine_ns"]
+    if "MpscQueP99_ns" not in results_dataframe.columns and "P99_ns" in results_dataframe.columns:
+        results_dataframe["MpscQueP99_ns"] = results_dataframe["P99_ns"]
+    if "MpscEngP99_ns" not in results_dataframe.columns:
+        results_dataframe["MpscEngP99_ns"] = 0.0
+    if "Dropped" not in results_dataframe.columns:
+        results_dataframe["Dropped"] = 0.0
+    if "PeakDepth" not in results_dataframe.columns:
+        results_dataframe["PeakDepth"] = 0.0
+
+    # Replicate-level datasets can contain multiple rows for the same
+    # Mode/Scenario/Book(/Producers) key; aggregate to mean values expected by
+    # the plotting pipeline.
+    group_columns = [column for column in ["Mode", "Scenario", "Book", "Producers"] if column in results_dataframe.columns]
+    if group_columns:
+        # Keep direct/gateway rows in grouped aggregation even when Producers is
+        # only populated for MPSC rows.
+        if "Producers" in group_columns:
+            results_dataframe["Producers"] = results_dataframe["Producers"].fillna(-1)
+
+        duplicate_mask = results_dataframe.duplicated(subset=group_columns, keep=False)
+        if duplicate_mask.any():
+            grouped = results_dataframe.groupby(group_columns, observed=False, as_index=False)
+
+            # Use mean values for primary metrics, then derive variability from
+            # replicate-to-replicate spread instead of averaging per-row stddev
+            # columns (which are often zero when each row is a single run).
+            mean_columns = [
+                column
+                for column in NUMERIC_COLUMNS
+                if column in results_dataframe.columns
+                and column not in {"LatencyStdDev_ns", "P99StdDev_ns", "ThroughputStdDev"}
+            ]
+            results_dataframe = grouped[mean_columns].mean(numeric_only=True)
+
+            std_column_map = {
+                "Latency_ns": "LatencyStdDev_ns",
+                "P99_ns": "P99StdDev_ns",
+                "Throughput": "ThroughputStdDev",
+            }
+            for value_column, std_column in std_column_map.items():
+                if value_column in results_dataframe.columns or value_column in mean_columns:
+                    if value_column in grouped.obj.columns:
+                        std_dataframe = grouped[[value_column]].std(numeric_only=True).rename(
+                            columns={value_column: std_column}
+                        )
+                        std_dataframe[std_column] = std_dataframe[std_column].fillna(0.0)
+                        results_dataframe = results_dataframe.merge(std_dataframe, on=group_columns, how="left")
+
+    if "Producers" in results_dataframe.columns:
+        results_dataframe["Producers"] = results_dataframe["Producers"].replace(-1, pd.NA)
 
     if "Book" in results_dataframe.columns:
         results_dataframe["Book"] = pd.Categorical(
@@ -69,8 +185,9 @@ def load_results(csv_path: Path) -> pd.DataFrame:
         )
 
     if "Producers" in results_dataframe.columns:
+        producer_numeric = pd.to_numeric(results_dataframe["Producers"], errors="coerce")
         results_dataframe["Producers"] = pd.Categorical(
-            results_dataframe["Producers"].astype(int),
+            producer_numeric,
             categories=MPSC_PRODUCER_ORDER,
             ordered=True,
         )
@@ -158,6 +275,18 @@ def gateway_latency_dataframe(gateway_dataframe: pd.DataFrame) -> pd.DataFrame:
 
 def mpsc_scaling_dataframe(mpsc_dataframe: pd.DataFrame) -> pd.DataFrame:
     """Return key columns used by MPSC scaling plots."""
+    for column_name in [
+        "Producers",
+        "MpscQue_ns",
+        "MpscQueP99_ns",
+        "MpscEng_ns",
+        "MpscEngP99_ns",
+        "Dropped",
+        "PeakDepth",
+    ]:
+        if column_name not in mpsc_dataframe.columns:
+            mpsc_dataframe[column_name] = 0.0
+
     return mpsc_dataframe[
         [
             "Book",
