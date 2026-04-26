@@ -1,4 +1,4 @@
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
     \resizebox{0.92\textwidth}{!}{%
     \begin{tikzpicture}[
@@ -24,9 +24,9 @@
         \draw[arrow] (L3.south) -- (RAM.north);
 
         % Annotations
-        \node[anchor=west, font=\sffamily\small] at (4.8, 0) {Smallest / Fastest (Highest Cost)};
-        \node[anchor=west, font=\sffamily\small] at (4.8, -4.8) {Largest / Slowest (Lowest Cost)};
-        \draw[->, thick, dashed] (4.5, -0.4) -- (4.5, -4.4);
+        \node[anchor=west, font=\sffamily\small] at (5.4, 0) {Smallest / Fastest (Highest Financial Cost)};
+        \node[anchor=west, font=\sffamily\small] at (5.4, -4.8) {Largest / Slowest (Lowest Financial Cost)};
+        \draw[->, thick, dashed] (5.1, -0.4) -- (5.1, -4.4);
     \end{tikzpicture}%
     }
     \caption{CPU memory hierarchy illustrating the explicit size-latency tradeoff. Faster layers are closer to the execution core but exponentially smaller in capacity.}

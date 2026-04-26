@@ -229,10 +229,14 @@ Index PoolOrderBook::allocateSlot()
         throw std::runtime_error("PoolOrderBook: Out of memory in pool!");
     }
 
-    // Pop from free list (O(1))
+    // Implementing an O(1) "Free List" pop. 
+    // We take the index at the head of our pool of pre-allocated unused slots.
     Index index = freeHead_;
+    
+    // The next available slot is stored inside the current slot's 'nextFree' member.
     freeHead_ = orders_[index].nextFree;
 
+    // Reset nodal linkage state; the 'nextFree' link is no longer relevant for an active order.
     orders_[index].next = NULL_IDX;
     orders_[index].prev = NULL_IDX;
     orders_[index].nextFree = NULL_IDX;
@@ -242,7 +246,8 @@ Index PoolOrderBook::allocateSlot()
 
 void PoolOrderBook::freeSlot(Index idx)
 {
-    // Push to free list (O(1))
+    // Return the node index back to the front of the free list (LIFO pattern).
+    // This allows immediate O(1) recycling of memory without a kernel 'free' call.
     orders_[idx].nextFree = freeHead_;
     freeHead_ = idx;
 }

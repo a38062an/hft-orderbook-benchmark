@@ -7,10 +7,10 @@ architectural modularity and strict low-level performance control.
 We selected C++20 for the engine specifically to use \texttt{std::span} 
 and other modern primitives that provide memory safety without the runtime 
 cost of managed pointers. 
-To manage the five discrete order book implementations, we used the 
-\texttt{CMake} build system. 
-This allowed us to maintain a modular architecture while ensuring identical 
-compiler flags across all variants.
+To manage the five discrete order book implementations, we employed a 
+unified interface and run-time polymorphism. This allowed us to maintain 
+a modular architecture while ensuring identical compiler flags across 
+all variants. 
 
 Key components of the toolchain include:
 \begin{itemize}
@@ -201,7 +201,7 @@ void TCPOrderGateway::clientHandler(int clientSocket) {
 To measure kernel networking overhead without the jitter of hardware 
 NICs, we run the gateway on the loopback interface (\texttt{127.0.0.1}). 
 This allows us to isolate the "Wire-to-Engine" latency analysed in 
-Section~5.5.
+Section~\ref{sec:gateway_decomposition}.
 
 \section{High-Performance Concurrency}
 The system employs a multi-threaded architecture to separate high-latency 
@@ -250,10 +250,9 @@ inline uint64_t getCurrentTimeNs() {
 \subsection{Thread-to-Core Affinity (CPU Pinning)}
 To eliminate the performance jitter caused by the Linux scheduler 
 migrating threads across physical cores (the "Context Switching Jitter"), 
-we implemented CPU pinning as shown in Listing 4.5.
+we implemented CPU pinning as shown in Listing~\ref{lst:cpu_pinning}.
 
 \begin{lstlisting}[language=C++, caption={POSIX Thread Pinning Strategy}, label={lst:cpu_pinning}]
-// src/utils/thread_pinning.hpp
 
 inline bool pinToCore(int core_id) {
 #if defined(__linux__)
@@ -280,7 +279,12 @@ skewed by operating system interference.
 
 \section{Automation and Data Collection}
 The suite uses a Python-based driver to sweep across the benchmark 
-scenarios defined in Chapter~\ref{chap:system_design}. 
+scenarios defined in Chapter~\ref{chap:system_design}. Each benchmark run 
+was conducted with a base volume of 10,000 orders to ensure statistical 
+stability. To prevent "cold-cache" artefacts, every measurement run began 
+with a 1,000-order warmup phase (consistent with benchmark driver logic) 
+where the memory was touched and the branch predictor trained before 
+recordings commenced. 
 This driver coordinates the execution of each order book variant and manages 
 the serialised CSV output required for the detailed evaluation in 
 Chapter~\ref{chap:testing_evaluation}.

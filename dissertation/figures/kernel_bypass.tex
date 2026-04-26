@@ -1,4 +1,4 @@
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
     \resizebox{0.92\textwidth}{!}{%
     \begin{tikzpicture}[
@@ -12,23 +12,23 @@
     ]
 
     % Standard Path
-    \node[anchor=west, font=\bfseries] at (0, 4) {Standard TCP/IP Stack};
-    \node[hw] (std_nic) at (1.75, 3) {NIC};
-    \node[kernel] (std_kern) at (1.75, 1.5) {Kernel Stack\\(sk\_buff / TCP)};
+    \node[anchor=west, font=\bfseries] at (0, 4.4) {Standard TCP/IP Stack};
+    \node[hw] (std_nic) at (1.75, 3.5) {NIC};
+    \node[kernel] (std_kern) at (1.75, 2.0) {Kernel Stack\\(sk\_buff / TCP)};
     \node[user] (std_app) at (1.75, 0) {User Application};
     \draw[arrow] (std_nic) -- (std_kern);
-    \draw[arrow] (std_kern) -- node[right, font=\scriptsize, align=left] {Interrupted\\Context Switch} (std_app);
+    \draw[arrow] (std_kern) -- node[midway, right=4pt, font=\scriptsize, align=left] {Interrupted\\Context Switch} (std_app);
 
     % Divider
     \draw[dashed, gray] (4.5, -0.5) -- (4.5, 4.5);
 
     % Bypass Path
-    \node[anchor=west, font=\bfseries] at (5.5, 4) {Kernel-Bypass (DPDK/Onload)};
-    \node[hw] (bp_nic) at (7.25, 3) {NIC};
-    \node[bypass] (bp_poll) at (7.25, 1.5) {User-Space Polling\\Ring Buffer};
+    \node[anchor=west, font=\bfseries] at (5.5, 4.4) {Kernel-Bypass (DPDK/Onload)};
+    \node[hw] (bp_nic) at (7.25, 3.5) {NIC};
+    \node[bypass] (bp_poll) at (7.25, 2.0) {User-Space Polling\\Ring Buffer};
     \node[user] (bp_app) at (7.25, 0) {User Application};
     \draw[arrow] (bp_nic) -- (bp_poll);
-    \draw[arrow] (bp_poll) -- node[right, font=\scriptsize, align=left] {Zero-Copy\\Direct Access} (bp_app);
+    \draw[arrow] (bp_poll) -- node[midway, right=4pt, font=\scriptsize, align=left] {Zero-Copy\\Direct Access} (bp_app);
 
     % Highlights
     \node[anchor=north, font=\scriptsize, text=red!80!black] at (1.75, -1) {Bottleneck: System Calls \& IRQs};

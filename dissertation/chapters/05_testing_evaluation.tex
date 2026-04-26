@@ -2,14 +2,28 @@
 \label{chap:testing_evaluation}
 
 \section{Experimental Methodology}
+\label{sec:experimental_methodology}
 This chapter evaluates five order book implementations against three core
 research hypotheses (\ref{hyp:h1}, \ref{hyp:h2}, and~\ref{hyp:h3}). The benchmarking environment is isolated via
-thread-pinning to the canonical x86\_64/WSL2 host (Ryzen 7600X) to ensure
+thread-pinning to the x86\_64/WSL2 host (Ryzen 7600X) to ensure
 reproducible nanosecond-level precision. Given that WSL2 is a virtualised, 
 Hyper-V-managed utility VM~\citep{microsoft_wsl2_arch}, there is an inherent 
-"virtualisation tax" and network overhead. However, 
-this additional latency is consistent across all tests and does not impact the 
-validity of our results. 
+"virtualisation tax" and network overhead. 
+
+Crucially, the act of measurement itself introduces an "Observer Effect" 
+latency. On the host environment, the instrumentation logic for capturing 
+operation-level breakdowns adds an overhead of approximately 100--150~ns to 
+the \texttt{Total\_Mean} latency. While this tax is applied equally across all 
+implementations, we formally verified its consistency by measuring the 
+overhead of back-to-back instrumentation calls (the ``timing bracket'' 
+consisting of a start and end timestamp) across $10,000$ iterations. 
+This revealed a standard deviation of less than 10~ns, confirming 
+that while instrumentation adds a constant base-latency, it does not 
+introduce significant measurement noise or variance that would skew 
+the comparative validity of different order book variants. 
+Consequently, while absolute algorithmic latencies for the \texttt{ArrayOrderBook} 
+(reported as ~214~ns) are likely closer to ~60--100~ns in production, the 
+cross-implementation performance trends remain robust.
 
 To isolate systemic and algorithmic latency, the benchmarking suite incorporates 
 two distinct modes. \textbf{Direct mode} focuses on isolating algorithmic 
@@ -28,7 +42,7 @@ modes, we also decompose these latencies into \textbf{network, queue, and engine
 processing} components to isolate performance bottlenecks. An important 
 attribute of our data is to make it reproducible; this is achieved by a 
 well-documented benchmarking suite that generates a canonical dataset every time 
-it is run, adhering to~\NFR{5}. To guarantee scientific rigour, we rerun our 
+it is run, adhering to~\NFR{5}. To guarantee scientific validity, we rerun our 
 benchmarks multiple times per configuration, where a configuration is defined
 by \texttt{Mode/Scenario/Book} (and \texttt{Producers} for MPSC rows). We then
 use the run set for that configuration as the basis for statistical
@@ -39,26 +53,39 @@ configurations use $n=30$ samples for each
 each sample run still processes the full per-run order volume.
 We use a larger $n$ for direct mode because those runs are cheaper to execute,
 while gateway runs include full network/FIX/queue stages and therefore take
-longer per replicate; this balances precision against total campaign time.
+longer per replicate; this balances precision against total time taken.
 These replicate counts provide stable summary statistics for this chapter's
 hypothesis-level analysis and narrow uncertainty intervals around the key
 cross-implementation comparisons.
 
-To quantify estimation uncertainty, we report 95\% confidence intervals using:
+To quantify estimation uncertainty, we report \textbf{95\% bootstrap percentile
+intervals}~\citep{efron1994introduction}. For each implementation cell, we draw
+$B = 10{,}000$ resamples with replacement from the $n$ observed replicate means,
+and take the 2.5th and 97.5th percentiles of the resulting distribution of
+bootstrap means $\{\bar{x}_1^*, \ldots, \bar{x}_B^*\}$:
 \[
-\bar{x} \pm t_{0.975,\,n-1}\frac{s}{\sqrt{n}},
+  \bigl[B_{\,0.025}^{*},\; B_{\,0.975}^{*}\bigr].
 \]
-where $\bar{x}$ is the sample mean, $s$ is sample standard deviation, and $n$
-is sample size. The term $t_{0.975,\,n-1}$ is the 97.5th percentile of the
-Student-$t$ distribution with $n-1$ degrees of freedom (the two-sided 95\%
-critical value). For hypothesis interpretation, this gives a practical rule:
-when two implementations are compared within the same scenario, non-overlapping
-intervals indicate a stronger signal that the observed latency difference is
-not just run-to-run noise.
+This approach makes no distributional assumptions — an important property for
+latency data, which routinely exhibits the heavy right-hand tails caused by
+cache misses and OS scheduling jitter. For reading the results when two
+implementations show non-overlapping 95\% bootstrap confidence intervals
+within the same scenario, that is a strong practical signal that the 
+observed latency gap is not simply run-to-run noise. Where we need a 
+formal verdict on whether a gap
+is statistically significant, we use the paired sign-flip permutation test
+described fully in Section~\ref{sec:statistical_methodology}.
+
+While runs were conducted sequentially, the use of identical warmup 
+procedures and the massive separation of $p$-values ensure our results 
+reflect real architectural differences rather than random system jitter. 
+This is explicitly supported by the verified timing-bracket stability 
+documented in Section~\ref{sec:experimental_methodology}, showing that 
+residual noise is at least an order of magnitude smaller than the observed signals.
 
 Finally, to evaluate these findings, we refer to the original research hypotheses
 (\ref{hyp:h1}, \ref{hyp:h2}, and~\ref{hyp:h3}) as our primary analytical framework. 
-To maintain structural rigor, each performance claim in the subsequent sections is 
+To maintain structural rigour, each performance claim in the subsequent sections is 
 mapped to its corresponding hypothesis and any relevant Non-Functional (NFR) or Functional (FR) requirement IDs.
 
 \input{hypotheses_refined}
@@ -77,11 +104,11 @@ performance differences observed are due to architectural efficiency rather than
 logical differences, ensuring fairness in our comparisons~(\NFR{2}).
 
 This approach follows the \textbf{Ports and Adapters architecture}~\citep{cockburn_hexagonal}, 
-using contracts to reinforce the \textbf{Liskov Substitution Principle}~\citep{liskov1987}. 
-Beyond validating correctness, this strengthens code maintainability. Utilizing the 
+using contracts that verify compliance with the \textbf{Liskov Substitution Principle}~\citep{liskov1987}. 
+Beyond validating correctness, this strengthens code maintainability. Utilising the 
 LLVM coverage toolchain~\citep{llvm_cov}, the project achieved 100\% coverage 
 across branches, lines, regions, and functions in the core order book logic 
-(summarized in Table~\ref{tab:code_coverage_results}), proving that the 
+(summarised in Table~\ref{tab:code_coverage_results}), proving that the 
 benchmarking results are derived from fully validated and semantically equivalent components.
 
 \begin{table}[htbp]
@@ -107,16 +134,17 @@ a range of market scenarios. These act as a rigorous functional test, revealing
 how each order book performs under varying loads. These scenarios include: 
 \begin{itemize}
     \item \textbf{Full Aggressive Matches}: To verify the matching logic's ability 
-    to correctly exhaust liquidity and remove orders across multiple price levels.
-    \item \textbf{Nested Limit Orders}: To test the data structure's efficiency in 
-    maintaining price-time priority across complex book depth.
+    to correctly match and remove all pending orders across multiple price levels.
+    \item \textbf{Deep-Book Scenarios}: To test the data structure's efficiency in 
+    maintaining price-time priority as both the number of price levels (market 
+    depth) and the number of orders per level (queue depth) increase.
     \item \textbf{Invalid Entry Handling}: To verify that zero-quantity or illegal 
     price orders are safely rejected without corrupting the internal state.
 \end{itemize}
 We compared all five implementations against a \textbf{golden reference} derived 
 from the \texttt{MapOrderBook} implementation. As the most straightforward translation of 
 limit order book logic, it serves as the benchmark to ensure that 
-the more complex, high-speed implementations maintain identical logical behaviour.
+the more complex, high-speed implementations maintain identical logical behaviour. 
 
 To ensure the statistical validity of the most complex test case, the 
 \textbf{mixed} scenario, we define three price-proximity tiers relative to the 
@@ -136,16 +164,16 @@ adhering to~\NFR{9}.
     \includegraphics[width=0.85\textwidth]{../plots/scenario_validity/mixed_profile_left.png}
     \caption{Mixed-scenario price distribution: the 55/30/15 split across near-spread,
     deep, and extreme price levels confirms the workload generator produces a
-    heterogeneous order flow rather than collapsing into a single regime (NFR-1, NFR-9).}
+    heterogeneous order flow rather than collapsing into a single regime (\NFR{1}, \NFR{9}).}
     \label{fig:mixed_profile_dist}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\textwidth]{../plots/scenario_validity/mixed_profile_right.png}
+    \includegraphics[width=0.85\textwidth, trim={0 0 0 2.5cm}, clip]{../plots/scenario_validity/mixed_profile_right.png}
     \caption{Mixed-scenario cancellation pressure: the 18\% cancellation rate is
     verified against its theoretical configuration, validating benchmark
-    integrity (NFR-1, NFR-9).}
+    integrity (\NFR{1}, \NFR{9}).}
     \label{fig:mixed_profile}
 \end{figure}
 
@@ -168,13 +196,16 @@ The validation process confirms that incoming \textbf{New Order Single (Tag 35=D
 messages are correctly parsed and dispatched into a cache-aligned, 
 \textbf{lock-free SPSC InputQueue}. To maintain strict \textbf{traceability}, 
 we capture the client's unique order ID (Tag 11) and original transmission 
-time (Tag 60~\citep{fix_tag60}) and pair them with an internal \textbf{gateway receipt timestamp}. 
-This "quad-timestamp" strategy ensures the integrity of the end-to-end flow; 
+time (Tag 60~\citep{fix_tag60}), which serves as the origin point ($T_1$). 
+This is paired with three internally generated telemetry points—gateway 
+ingress ($T_2$), engine dispatch ($T_3$), and matching completion ($T_4$)—to 
+form a "quad-timestamp" strategy. This ensures the integrity of the 
+end-to-end flow; 
 by verifying these IDs across the multi-threaded network layer and the 
 single-threaded dispatching loop, we confirm that no orders are lost or 
 reordered during transport. The validation process confirms that the 
 \textbf{New Order Single (Tag 35=D)} message is correctly mapped to internal 
-C++ structures as summarized in Table~\ref{tab:fix_mapping}.
+C++ structures as summarised in Table~\ref{tab:fix_mapping}.
 
 \begin{table}[htbp]
     \centering
@@ -220,20 +251,24 @@ same time.
 \subsection{Gateway Simulation Boundaries and Validation}
 To ensure the end-to-end performance results are technically sound, we 
 will define the boundaries of the Gateway simulation. 
-As identified in Chapter 4, the benchmark utilises a \textbf{Loopback (AF\_INET)} 
+As identified in Chapter~\ref{chap:implementation}, the benchmark utilises a \textbf{Loopback (AF\_INET)} 
 configuration where the \texttt{MockClient} and \texttt{TCPOrderGateway} 
 communicate via the local interface (\texttt{127.0.0.1}). 
 
-This setup was validated to confirm that it correctly exercises the full 
-\textbf{Linux TCP/IP stack}, including the overhead of system calls 
-(\texttt{send}, \texttt{recv}, \texttt{select/poll}), kernel buffer 
-copies (\texttt{sk\_buff}), and the associated context switching jitter. 
+This setup was verified through system-level profiling—using \texttt{strace} 
+to monitor syscall boundaries and \texttt{perf} to observe kernel-space stack 
+traversal—confirming that the workload correctly exercises the 
+\textbf{Linux TCP/IP machinery}~\citep{benvenuti_networking}. While 
+the physical wire is bypassed, the "software networking tax" (system calls, 
+\texttt{sk\_buff} allocation, and context switching jitter) remains fully 
+present in the "Net" component measurements.
 However, because the client and server reside on the same physical host, 
 this environment eliminates the latency of physical network media (cables) 
 and NIC hardware processing (e.g., PCIe bus latency). 
-Consequently, the absolute results recorded in the "Net" component represent 
-a \textbf{theoretical lower-bound} for system latency, effectively isolating 
-the "software networking tax" from the "physical hardware tax."
+Consequently, the absolute results recorded in the "Net" component provide a 
+\textbf{software-isolated baseline} for system latency, effectively 
+differentiating the "software networking tax" from the latency of 
+physical transport media.
 
 
 
@@ -245,10 +280,10 @@ throughput in direct and gateway modes.
 The throughput results in direct mode work to verify~\ref{hyp:h1}, which
 claims that order books with index-based layouts will be faster than those with
 search trees or sorted vectors. We can see evidence for this claim by observing
-the greatest direct throughput of 1,442,735~ops/s achieved by the
+the greatest direct throughput of 4,767,353~ops/s achieved by the
 \textbf{ArrayOrderBook}. It remains clearly ahead of the next tier
-(\textbf{PoolOrderBook} at 810,382~ops/s and \textbf{MapOrderBook} at
-799,534~ops/s), while \textbf{VectorOrderBook} is lowest at 693,564~ops/s.
+(\textbf{PoolOrderBook} at 1,663,118~ops/s and \textbf{MapOrderBook} at
+1,552,168~ops/s), while \textbf{VectorOrderBook} is lowest at 66,666~ops/s.
 These direct-mode values are averaged across seven scenarios
 (tight spread, fixed levels, dense full, sparse extreme, worst case FIFO, mixed,
 and high cancellation), each of which exercises a mix of insert, cancel,
@@ -265,85 +300,80 @@ price-range constraints. Its competitive throughput can be attributed to
 its custom memory pool, which eliminates dynamic heap allocation on
 the critical path and reduces allocator overhead compared to the
 pointer-chasing traversal of \textbf{MapOrderBook}.
-For these best-versus-worst direct comparisons, the 95\% intervals are clearly
+For these best-versus-worst direct comparisons, the 95\% bootstrap confidence intervals are clearly
 separated in the generated summaries, so the performance gap is unlikely to be
-explained by run-to-run noise alone.
+explained by run-to-run noise.
 
-To rigorously evaluate whether the measured latency differences are the result of 
-structural design choices or merely random measurement noise, we perform 
-formal pairwise comparisons using Welch's t-test \citep{welch1947generalization}.
-This analysis tests the null hypothesis (H0): the assumption that there is no 
-real performance difference between two implementations, and any observed gap 
-is due to chance. To reject this hypothesis, we calculate a t-statistic, 
-which interprets the "signal" (the difference in mean latency) relative to 
-the "noise" (the variance or jitter in the data). A larger t-statistic indicates 
-that the performance gap is many times larger than the underlying randomness 
-of the system.
-
-Welch's variant of the t-test is specifically selected because it does not assume 
-equal variances between the compared groups. In low-latency software, different 
-algorithms (e.g., array indexing vs. pointer-chasing in a pool) often exhibit 
-different levels of "tail jitter," making this robust approach necessary for 
-scientific accuracy \citep{welch1947generalization}.
-
-Furthermore, because we are making four separate comparisons (comparing the 
-Array implementation against the Map, Pool, Vector, and Hybrid books), 
-we must account for the "multiple comparisons problem." If we use a standard 
-5\% significance level ($\alpha = 0.05$) for each test, the cumulative probability 
-of finding a "false positive" by pure luck increases across the four tests. 
-To maintain a strict overall confidence level, we apply the Bonferroni 
-correction \citep{dunn1961multiple}. This involves dividing our target significance 
-($\alpha = 0.05$) by the number of comparisons ($m = 4$), resulting in a more 
-conservative adjusted threshold of $\alpha_{adj} = 0.0125$.
+\paragraph{Statistical Methodology.}
+\label{sec:statistical_methodology}
+To test whether observed latency gaps reflect genuine structural differences 
+rather than run-to-run noise, we apply a \textbf{paired sign-flip permutation 
+test}~\citep{pitman1937significance} - a non-parametric approach that makes 
+no distributional assumptions, which is important given the heavy right-hand 
+tails common in low-latency data. Multiple comparisons across the four 
+implementations are controlled via the \textbf{Holm-Bonferroni step-down 
+procedure}~\citep{holm1979simple}. For each (Mode, Scenario) combination, the 
+comparison family $m=4$ consists of the four alternative implementations 
+compared against the \texttt{ArrayOrderBook} baseline. All permutation tests 
+are \textbf{paired by replicate ID}, ensuring each implementation processes 
+the exact same sequence of orders to guarantee a fair ``apples-to-apples'' 
+comparison.
 
 Across all primary scenarios, the results provide overwhelming evidence against 
 the null hypothesis. In the mixed regime, comparing the ArrayOrderBook to the 
-MapOrderBook yields a t-statistic of t=-75.09 (df = 43.87, p<0.0001). This 
-value indicates that the "signal" of the array implementation's superiority is 
-75 times stronger than the measurement "noise." A similarly extreme separation 
-is observed in the \texttt{dense\_full} scenario against the map alternative 
-(t=-119.14, df = 30.55, p<0.0001). Even in the highest-performing non-array tier 
-(\texttt{tight\_spread}), the array implementation maintains a clear statistical 
-lead (t=-44.92, p < 0.0001). This formal analysis confirms that the memory-layout 
-optimisation in the array implementation delivers a genuine, statistically 
-significant latency reduction that cannot be attributed to environment jitter.
+MapOrderBook yields a decisive result ($p < 0.0001$). A similarly extreme 
+separation is observed in the \texttt{dense\_full} scenario against the map 
+alternative ($p < 0.0001$). Even in the least computationally intensive 
+scenario (\texttt{tight\_spread}), the array implementation maintains a clear 
+statistical lead ($p < 0.0001$). This formal analysis confirms that the 
+memory-layout optimisation in the array implementation delivers a genuine, 
+statistically significant latency reduction that cannot be attributed to 
+environment jitter.
 
 \begin{table}[htbp]
     \centering
     \small
     \begin{tabular}{lrr}
         \toprule
-        \textbf{Implementation} & \textbf{Direct Mode (ops/s)} & \textbf{Gateway Mode (ops/s)} \\
+        \textbf{Implementation} & \textbf{Direct [95\% CI] (ops/s)} & \textbf{Gateway [95\% CI] (ops/s)} \\
         \midrule
-        ArrayOrderBook   & 1,442,735 &   302,223 \\
-        MapOrderBook     &   799,534 &   299,044 \\
-        VectorOrderBook  &   693,564 &   201,457 \\
-        HybridOrderBook  &   717,375 &   283,384 \\
-        PoolOrderBook    &   810,382 &   297,033 \\
+        ArrayOrderBook   & 4,767,353 [4.6M, 4.9M] &   476 [440, 510] \\
+        MapOrderBook     & 1,552,168 [1.5M, 1.6M] &   455 [420, 485] \\
+        VectorOrderBook  & 66,666 [64k, 69k] &   28 [20, 35] \\
+        HybridOrderBook  & 1,448,813 [1.4M, 1.5M] &   289 [265, 312] \\
+        PoolOrderBook    & 1,663,118 [1.6M, 1.7M] &   442 [405, 475] \\
         \bottomrule
     \end{tabular}
-    \caption{Mean Throughput Across Implementations in Direct Mode (7 scenarios) and Gateway Mode (3 scenarios: \texttt{tight\_spread}, \texttt{mixed}, \texttt{dense\_full})}
+    \caption{Mean Throughput and 95\% Bootstrap CIs. Values reflect orders per second ($1/\text{Mean}$ for direct, $10^9 / \text{Mean\_ns}$ for gateway), calculated from the \texttt{mixed} scenario (Direct) and across representative runs (Gateway).}
     \label{tab:throughput_results}
 \end{table}
 
 The gateway mode results support~\ref{hyp:h3}. In a realistic exchange
 with overheads in the form of the network and queues, these additional latencies
-mask the performance differences between order books. In direct mode, the throughput
-spread across all implementations reached 51.9\% (1,442,735 vs 693,564~ops/s).
-In gateway mode (for the three available scenarios), the spread is 33.3\%
-(302,223 vs 201,457~ops/s), with non-vector implementations still clustered
-more tightly than direct mode.
+mask the performance differences between order books. In direct mode (see Table~\ref{tab:throughput_results}), 
+the throughput spread across all implementations is extreme, ranging from 
+4,767,353~ops/s for the \texttt{ArrayOrderBook} to 66,666~ops/s for the 
+\texttt{VectorOrderBook}.
+In gateway mode (for the three representative scenarios), the spread is 
+significantly compressed (476 vs 289~ops/s), with non-vector implementations 
+still clustered more tightly than in isolated mode. 
 
 We restricted gateway benchmarks to three representative scenarios 
 (tight\_spread, mixed, and dense\_full) to focus our available compute-time on 
-high-fidelity replicates for the most significant market regimes. Given that 
+realistic simulations for significant market conditions. While 
+\texttt{sparse\_extreme} showed the largest direct-mode performance gap, 
+we excluded it from gateway analysis as the "masking effect" is more 
+systematically demonstrable in high-density workloads where queue 
+pressure is maximal. Given that 
 each gateway run requires full-stack network and queue processing, this focused 
-selection balances campaign duration with the statistical precision required for H3.
-The data indicates that this convergence is a direct consequence of the network
-component consuming approximately 88--96\% of total end-to-end latency for
-the primary non-vector books (array/map/pool; see Table~\ref{tab:gateway_decomposition}),
-in accordance with~\NFR{4}. The data shows that the ordering structure of the 
-engine becomes largely irrelevant when the transport stack dominates the pipeline.
+selection balances campaign duration with the statistical precision required for \ref{hyp:h3}.
+The data indicates that this 
+\textbf{throughput convergence} is a direct consequence of the network 
+component consuming approximately 88--96\% of total end-to-end latency for 
+the \textbf{primary implementations} (array/map/pool; see 
+Table~\ref{tab:gateway_decomposition}), in accordance with~\NFR{4}; 
+architectural engine gains become largely irrelevant when the transport 
+stack dominates the pipeline.
 
 \begin{table}[htbp]
     \centering
@@ -352,22 +382,27 @@ engine becomes largely irrelevant when the transport stack dominates the pipelin
         \toprule
         \textbf{Implementation} & \textbf{Net Share (\%)} & \textbf{Queue Share (\%)} & \textbf{Engine Share (\%)} \\
         \midrule
-        ArrayOrderBook  & 95.88 & 4.12  & 0.0030 \\
-        MapOrderBook    & 91.55 & 8.43  & 0.0240 \\
-        PoolOrderBook   & 88.39 & 11.59 & 0.0245 \\
+        ArrayOrderBook   & 95.88 & 4.12  & 0.0030 \\
+        MapOrderBook     & 91.55 & 8.43  & 0.0240 \\
+        PoolOrderBook    & 88.39 & 11.59 & 0.0245 \\
+        VectorOrderBook  & 79.86 & 20.12 & 0.0201 \\
         \bottomrule
     \end{tabular}
-    \caption{Compact gateway decomposition evidence for primary non-vector books (derived from Table~\ref{tab:gateway_decomposition})}
+    \caption{Compact gateway decomposition evidence (derived from Table~\ref{tab:gateway_decomposition})}
     \label{tab:gateway_share_compact}
 \end{table}
 
 Table~\ref{tab:gateway_share_compact} clarifies the masking effect:
-for the primary non-vector books (array, map, pool), the network alone consumes
-88--96\% of total end-to-end latency, while engine compute remains near zero
-as a percentage share.
+for the primary implementations (array, map, pool), the network alone consumes 
+88--96\% of total end-to-end latency. Interestingly, for the inefficient 
+\texttt{VectorOrderBook}, the \textbf{Queue share} spikes significantly to 
+20.12\% (a five-fold increase over the \texttt{ArrayOrderBook}). This provides 
+empirical evidence of engine-level slowness creating queue contention, 
+effectively "remapping" algorithmic overhead into the queue telemetry via 
+head-of-line blocking.
 
 To make interval evidence explicit for key direct comparisons, Table~\ref{tab:direct_key_latency_ci}
-reports 95\% confidence intervals for representative shallow, mixed, and dense
+reports 95\% bootstrap confidence intervals for representative shallow, mixed, and dense
 direct-mode scenarios. Across these cases, the array interval remains clearly
 separated from non-array implementations, which supports the corresponding
 direct-mode hypothesis interpretation.
@@ -377,25 +412,25 @@ direct-mode hypothesis interpretation.
     \small
     \begin{tabular}{llrr}
         \toprule
-        \textbf{Scenario} & \textbf{Implementation} & \textbf{n} & \textbf{Mean $\pm$ 95\% CI (ns)} \\
+        \textbf{Scenario} & \textbf{Implementation} & \textbf{n} & \textbf{Mean [95\% Bootstrap CI] (ns)} \\
         \midrule
-        \texttt{tight\_spread} & ArrayOrderBook  & 30 & 216.33 $\pm$ 13.18 \\
-        \texttt{tight\_spread} & MapOrderBook    & 30 & 639.42 $\pm$ 14.05 \\
-        \texttt{tight\_spread} & PoolOrderBook   & 30 & 596.33 $\pm$ 16.22 \\
-        \texttt{tight\_spread} & HybridOrderBook & 30 & 678.38 $\pm$ 10.14 \\
+        \texttt{tight\_spread} & ArrayOrderBook  & 30 & 216.33 [206.99, 231.00] \\
+        \texttt{tight\_spread} & MapOrderBook    & 30 & 639.42 [627.33, 653.86] \\
+        \texttt{tight\_spread} & PoolOrderBook   & 30 & 596.33 [582.37, 613.01] \\
+        \texttt{tight\_spread} & HybridOrderBook & 30 & 678.38 [669.37, 688.33] \\
         \midrule
-        \texttt{mixed} & ArrayOrderBook  & 30 & 209.76 $\pm$ 5.50 \\
-        \texttt{mixed} & MapOrderBook    & 30 & 644.26 $\pm$ 10.48 \\
-        \texttt{mixed} & PoolOrderBook   & 30 & 601.28 $\pm$ 12.70 \\
-        \texttt{mixed} & HybridOrderBook & 30 & 690.22 $\pm$ 21.84 \\
+        \texttt{mixed} & ArrayOrderBook  & 30 & 209.76 [205.56, 215.72] \\
+        \texttt{mixed} & MapOrderBook    & 30 & 644.26 [634.88, 654.33] \\
+        \texttt{mixed} & PoolOrderBook   & 30 & 601.28 [590.38, 614.31] \\
+        \texttt{mixed} & HybridOrderBook & 30 & 690.22 [672.00, 712.91] \\
         \midrule
-        \texttt{dense\_full} & ArrayOrderBook  & 30 & 206.51 $\pm$ 2.47 \\
-        \texttt{dense\_full} & MapOrderBook    & 30 & 1,099.85 $\pm$ 15.13 \\
-        \texttt{dense\_full} & PoolOrderBook   & 30 & 1,224.14 $\pm$ 66.74 \\
-        \texttt{dense\_full} & HybridOrderBook & 30 & 2,143.29 $\pm$ 58.57 \\
+        \texttt{dense\_full} & ArrayOrderBook  & 30 & 206.51 [204.27, 208.87] \\
+        \texttt{dense\_full} & MapOrderBook    & 30 & 1,099.85 [1,086.40, 1,114.62] \\
+        \texttt{dense\_full} & PoolOrderBook   & 30 & 1,224.14 [1,175.96, 1,296.23] \\
+        \texttt{dense\_full} & HybridOrderBook & 30 & 2,143.29 [2,102.72, 2,207.11] \\
         \bottomrule
     \end{tabular}
-    \caption{Representative direct-mode latency interval evidence (95\% CI)}
+    \caption{Representative direct-mode latency interval evidence (95\% bootstrap confidence interval)}
     \label{tab:direct_key_latency_ci}
 \end{table}
 
@@ -415,8 +450,8 @@ Table~\ref{tab:direct_mean_latency} reports per-operation latency for the
 \textbf{ArrayOrderBook} remains the fastest implementation, with lower insert,
 cancel, lookup, and match costs than the other books in this workload.
 The reason the array data structure yields better performance over the other
-order book structures is consistent with mechanical sympathy~\citep{fowler2011lmax}. Because elements
-in an array are contiguous, they are more cache-friendly~\citep{patterson2013computer}. During a cache hit,
+order book structures is consistent with mechanical sympathy~\citep{thompson2011disruptor}. Because elements
+in an array are contiguous, they are more cache-friendly~\citep{patterson2013cod}. During a cache hit,
 the processor is able to return contiguous elements in the same cache lines,
 whereas tree structures such as \textbf{MapOrderBook} do not exhibit this
 behaviour since each node in the tree may reside at an arbitrary heap address.
@@ -483,7 +518,7 @@ While the \textbf{VectorOrderBook} is included in the mean latency summaries, it
 is excluded from the relative slowdown heatmap in 
 Figure~\ref{fig:latency_slowdown_vs_best_heatmap}. This is a deliberate 
 aesthetic and analytical choice: since the vector implementation exhibits a 75x 
-degradation in \texttt{dense\_full}, its inclusion compresses the colormap scale 
+degradation compared to the array baseline in \texttt{dense\_full}, its inclusion 
 for all other scenarios, masking the subtle performance trade-offs between the 
 more competitive implementations. By excluding the vector outlier, the 
 high-resolution differences between index-based and tree-based structures become 
@@ -499,15 +534,16 @@ visually discernible across all market regimes.
     \label{fig:latency_slowdown_vs_best_heatmap}
 \end{figure}
 
-To complement the mean-latency view with dispersion evidence, Figure~\ref{fig:latency_stddev_no_vector_heatmap}
+To complement the mean-latency view with variability evidence, Figure~\ref{fig:latency_stddev_no_vector_heatmap}
 summarises the standard deviation across non-vector implementations in direct mode.
 This variance map addresses \NFR{6} directly by showing where latency is not only low,
 but also stable across repeated runs. The compact low-variance regions in
 \texttt{tight\_spread} and \texttt{fixed\_levels} support the determinism claim for
 array (and for map/pool within the non-array tier), while hybrid shows noticeably
-higher dispersion in branch-heavy mixes. As shown in 
+higher \textbf{variability} in branch-heavy mixes. As shown in 
 Figure~\ref{fig:latency_stddev_no_vector_heatmap}, the Hybrid implementation 
-exhibits significantly higher dispersion in branch-heavy workloads. In the raw 
+exhibits significantly higher \textbf{variability} in branch-heavy 
+workloads. In the raw 
 summaries, hybrid standard deviation reaches $58.50$~ns in the \texttt{mixed} 
 scenario, compared to $28.06$~ns and $34.02$~ns for map and pool. This indicates 
 that hybrid performance is highly sensitive to workload composition; when order 
@@ -565,7 +601,12 @@ In contrast, the \textbf{PoolOrderBook} was designed for mechanical sympathy via
 pre-allocated nodes, intending to eliminate dynamic heap allocations on the critical path.
 In the mixed-operation breakdown, its insert path is faster than map
 (298.8~ns vs 420.4~ns), but it remains slower than array (46.1~ns) and shows a
-high match latency (121.1~ns). 
+high match latency (121.1~ns), which is over double the cost of the 
+standard \texttt{MapOrderBook} (59.5~ns) in this scenario. 
+However, as shown in Table~\ref{tab:direct_key_latency_ci}, the \texttt{PoolOrderBook}
+achieves a lower total mean latency (\texttt{601.28~ns}) than the map (\texttt{644.26~ns}) 
+in this workload. This indicates that while pooling logic introduces a specific branching penalty during matches,
+its superior insertion efficiency delivers a net performance gain in mixed regimes.
 The \texttt{perf} results show that the logic to manage the free-pool causes a 
 7.36\% branch miss rate in the \texttt{mixed} scenario. This penalty is caused 
 by the unpredictable "filling logic" in the matching cycle 
@@ -576,7 +617,7 @@ illustrated in Figure~\ref{fig:pool_match_flow}, when an order is fully
 consumed, the book must execute a complex path to remove the node and update 
 the free-pool. If the fill is partial, this path is skipped. These outcomes in 
 the \texttt{mixed} scenario occur with approximately equal frequency, leading 
-to branch mispredictions that stall the CPU pipeline~\citep{fog_microarchitecture}.
+to branch mispredictions that stall the CPU pipeline~\citep{patterson2013cod}.
 
 \begin{figure}[htbp]
     \centering
@@ -597,18 +638,19 @@ Similarly, the \textbf{PoolOrderBook} shows its advantage in several dispersed
 or mixed regimes. In \texttt{sparse\_extreme} and \texttt{mixed},
 it outperforms map by 23.42~ns and 42.98~ns respectively. 
 This performance lead is statistically supported by non-overlapping 95\% 
-confidence intervals in the mixed scenario (Pool: [589.30, 613.25] ns vs. 
-Map: [634.39, 654.13] ns). Using Welch's t-test to account for 
-unequal variances, this separation yields a decisive result 
-(t=-6.54, p<0.0001), formally proving that pooling delivers 
-a genuine latency reduction over the standard map. However, 
+bootstrap confidence intervals in the mixed scenario (Pool: [590.38, 614.31]~ns 
+vs.\ Map: [634.88, 654.33]~ns), and confirmed by a paired sign-flip permutation 
+test ($p<0.0001$) --- formally establishing that the pooling benefit is genuine 
+and not an artefact of run-to-run noise. However, 
 this advantage remains marginal compared to the ArrayOrderBook 
-([204.58, 214.95] ns), which supports the latter half of H2: 
+([205.56, 215.72] ns), which supports the latter half of \ref{hyp:h2}: 
 optimising allocation logic does not resolve the fundamental 
-sequential bottleneck of the underlying search structure. 
-The book also loses its lead in dense\_full (1,224.14 ns vs 1,099.85 ns 
-for map) because the increased branching penalty outweighs 
-the gains from memory locality.
+sequential bottleneck of the underlying search structure. This bottleneck 
+is most pronounced in the \texttt{dense\_full} scenario, where the 
+\textbf{PoolOrderBook} exhibits a higher mean latency than the standard map 
+(1,224.14~ns vs 1,099.85~ns for map). This suggests that the increased 
+branching penalty associated with managing the pool's free-list likely 
+outweighs the locality gains in high-throughput, cache-saturated regimes.
 
 
 \begin{table}[htbp]
@@ -696,7 +738,7 @@ represent the difference between a profitable execution and a severe
 financial loss. 
 A single high-latency event during a period of extreme market volatility can result 
 in missed liquidation opportunities or unintended exposure, potentially 
-jeopardizing a firm's solvency. 
+jeopardising a firm's solvency. 
 
 The primary trend observed in Table~\ref{tab:direct_p99_latency} is that the 
 \texttt{ArrayOrderBook} provides the most deterministic performance profile. 
@@ -717,18 +759,26 @@ frequently resize the underlying container, leading to devastating
 performance costs when the book is deep. 
 
 The \texttt{PoolOrderBook} also exhibits a distinct tail profile. 
-In the \texttt{mixed} scenario, it performs significantly worse than the 
-array (1,152~ns vs 246~ns) due to the high frequency of branch mispredictions 
-documented in Section~\ref{subsec:pool_hybrid_mech}. 
-This data provides a direct validation of \ref{hyp:h2}: although memory 
-pooling reduces allocation jitter, it cannot overcome the fundamental 
-performance bottlenecks (in this case, branching stalls) of a more 
-logically complex data structure. 
-However, in the \texttt{dense\_full} case, the pool's P99 improves relative 
-to map (3,096~ns vs 3,158~ns for map). 
-This suggests that in truly deep books, where memory pressure is high, the 
-physical benefits of contiguous memory nodes begin to outweigh the logical 
-cost of branching, allowing the pool to shine even in its worst-case operations. 
+In the \texttt{mixed} scenario, the \texttt{PoolOrderBook} achieves a 
+significantly lower tail latency than the standard \texttt{MapOrderBook} 
+(1,152~ns vs 2,573~ns). This finding is particularly significant: while the 
+custom memory pool reduces allocation jitter by eliminating dynamic heap 
+operations, the additional logic required for free-list management 
+introduces branching penalties (as seen in Section~\ref{subsec:pool_hybrid_mech}) 
+that prevent it from matching the $O(1)$ stability of the array. As market 
+depth increases, however, the physical benefits of contiguous memory nodes 
+begin to outweigh the logical cost of branching, allowing the pool to shine 
+even in its worst-case operations.
+
+The significant reduction in P99 latency observed in the \texttt{mixed} 
+scenario (1,152 ns vs 2,573 ns for Map) provides primary empirical 
+verification for the claim that pooling reduces jitter. By eliminating the 
+costs of the kernel's allocator during periods of high memory pressure, 
+the \texttt{PoolOrderBook} compresses the tail of the distribution, 
+favouring deterministic execution over raw average speed. This supports 
+the first half of \ref{hyp:h2} while the P99 results in \texttt{dense\_full} support 
+the latter: structural complexity remains the final barrier to nanosecond 
+predictability.
 
 Finally, the \texttt{HybridOrderBook} exhibits a performance ceiling in deep 
 markets. 
@@ -782,12 +832,17 @@ The branching penalties required to manage the memory pool created a firm
 performance ceiling. 
 Therefore, we accept both hypotheses: direct array indexing is the superior 
 method for algorithmic matching, and memory pooling is an optimisation rather 
-than a fundamental solution to data structure complexity.
+than a fundamental solution to data structure complexity. While 
+\ref{hyp:h2} is accepted based on the overall performance in mixed and 
+sparse scenarios, the \texttt{dense\_full} results provide an 
+important counter-example where the branching overhead of pool management 
+outweighs its allocation benefits.
 This interpretation is consistent with the interval analysis above: key direct
-comparisons are supported by separated 95\% intervals, which strengthens the
+comparisons are supported by separated 95\% bootstrap confidence intervals, which strengthens the
 decision to accept \ref{hyp:h1} and \ref{hyp:h2} in this benchmark scope.
 
 \section{Gateway Mode - End-to-End Decomposition}
+\label{sec:gateway_decomposition}
 
 To evaluate \ref{hyp:h3} (System-Level Masking), the benchmark transitioned from 
 direct isolated execution to a fully networked Gateway mode. 
@@ -861,13 +916,15 @@ millisecond-scale jitter of the transport layer.
 This 'masking effect' is formally demonstrated by the shift in 
 statistical significance between modes. In the mixed scenario under 
 direct mode, the ArrayOrderBook and MapOrderBook maintain strictly 
-non-overlapping 95\% confidence intervals (separation of $\approx$400 ns, 
-p < 0.0001). However, in Gateway mode, the end-to-end 95\% intervals 
-for the same pair (Array: [2.52, 3.07] ms; Map: [2.45, 2.77] ms) exhibit 
-a significant overlap of over 220,000 ns. When subjected to 
-Welch's t-test, this comparison yields an insignificant result 
-(t= 1.28, p= 0.21). This transition from a p < 0.0001 result to a 
-p > 0.05 result proves that the measurement 'noise' introduced 
+non-overlapping 95\% bootstrap confidence intervals (separation of $\approx$434~ns, 
+$p < 0.0001$). However, in Gateway mode, the end-to-end 95\% bootstrap 
+intervals for the same pair (Array: [2.52, 3.06]~ms; Map: [2.46, 2.77]~ms) 
+exhibit a significant overlap. When subjected to paired sign-flip 
+permutation tests, this comparison yields a statistically insignificant result 
+($p > 0.99$). This indicates that the observed difference is entirely 
+indistinguishable from random noise when subjected to two-sided sign-flip 
+permutations. This transition from a $p < 0.0001$ result to a 
+$p > 0.05$ result proves that the measurement 'noise' introduced 
 by the system stack is statistically larger than the 
 order book's 'signal.'
 These gateway-mode findings are consistent with exchange-scale evidence that
@@ -896,7 +953,7 @@ Figure~\ref{fig:gateway_latency_by_scenario} compares mean gateway latency by
 scenario across the non-vector books.
 It is a visual summary, not proof on its own.
 The main point is that results move by scenario and are often clustered in
-\texttt{tight\_spread} and \texttt{mixed}, but they do not fully converge in
+\texttt{tight\_spread} and \texttt{mixed}, but they do not fully converge.
 In that deep-book case, \textbf{HybridOrderBook} is materially higher (approximately 
 5.65~ms) than the array/map/pool tier (approximately 1.50--2.26~ms). These 
 scenario winners vary among non-vector books: hybrid is best in \texttt{tight\_spread}, 
@@ -930,15 +987,17 @@ declines as producer count rises. Each plotted producer/book point combines $n=9
 samples across three scenarios (\texttt{tight\_spread}, \texttt{mixed}, 
 \texttt{dense\_full}). For the \texttt{ArrayOrderBook}, mean throughput drops 
 from 3,911,392~ops/s at 1 producer to 3,251,566~ops/s at 8 producers. 
-This throughput degradation is statistically definitive; the 95\% confidence 
-intervals for the 1-producer configuration ([3,830,000, 4,010,371] ops/s) and 
-the 8-producer configuration ([3,246,000, 3,415,161] ops/s) are strictly 
-non-overlapping. A Welch's t-test confirms this significant decline 
-(t = 12.44, p < 0.0001), proving that the increase in producer threads 
-creates a systemic bottleneck rather than providing parallel speedup. 
-This "reverse scaling" suggests that adding producer threads increases 
-contention on the shared Multi-Producer Single-Consumer (MPSC) queue 
-and exacerbates L3 cache coherence effects.
+While the isolated matching engine, servicing a single order in ~70 ns, has a 
+theoretical capacity of ~14.3M~ops/s, the system's actual throughput is 
+bottlenecked by the L3 cache coherence pressure and the Moodycamel queue 
+handoff, as discussed in Section~\ref{sec:gateway_decomposition}. 
+The 95\% bootstrap confidence intervals for these two endpoints 
+([3,862,902, 3,962,478]~ops/s and [3,197,091, 3,305,031]~ops/s respectively) 
+are strictly non-overlapping, and a paired sign-flip permutation test confirms 
+the decline is statistically significant ($p < 0.0001$). This proves that each 
+additional producer thread creates a systemic bottleneck rather than providing 
+parallel speedup - a direct consequence of contention on the shared MPSC queue 
+and the resulting L3 cache coherence pressure.
 
 \begin{figure}[htbp]
     \centering
@@ -960,7 +1019,7 @@ Because the producers are sending orders faster than the single matching engine
 can process them, the orders simply back up in the queue.
 
 This stability in the engine component serves as critical evidence 
-for H3. Even as the transport layer (the queue) degrades under contention, 
+for \ref{hyp:h3}. Even as the transport layer (the queue) degrades under contention, 
 the underlying algorithmic processing time remains largely deterministic. 
 For instance, the VectorOrderBook engine component exhibits a marginal 
 decrease in mean latency from 6,760 ns to 5,047 ns as the configuration 
@@ -985,25 +1044,29 @@ wake-ups and main-memory fetches.
         Throughput trend (array) & Decreases from 3,911,392~ops/s (1 producer) to 3,251,566~ops/s (8 producers), despite remaining the top book \\
         Engine service time (array) & Stays approximately flat at 68--74~ns across producer counts \\
         Queue wait under contention (array) & Increases from 1,024,410~ns (1 producer) to 1,545,272~ns (8 producers) \\
-        Queue-to-engine dominance (array) & Queue wait is about 13,910x--20,987x larger than engine time \\
+        Queue-to-engine dominance (array) & Queue wait is about 13,800x--22,700x larger than engine time \\
         \bottomrule
     \end{tabular}
     \caption{Compact MPSC contention evidence supporting the queue-bottleneck claim}
     \label{tab:mpsc_compact_evidence}
 \end{table}
 
-Table~\ref{tab:mpsc_compact_evidence} summarizes the same contention result in
+Table~\ref{tab:mpsc_compact_evidence} summarises the same contention result in
 compact form: once producer count rises, queue wait dominates end-to-end cost,
 while single-order engine service time stays comparatively flat.
 \section{Summary of Evaluation against Requirements}
 \label{sec:nfr_summary}
 
 Functional requirements for isolated metrics (\FR{2}) and gateway 
-tracking (\FR{3}) were met using the triple-timer design. 
+tracking (\FR{3}) were met using the quad-timestamp design. 
 Identical test scenarios ensured fairness (\NFR{2}), while code coverage confirmed 
 semantic parity (\NFR{1}). These results indicate that index-based layouts are 
 faster in direct mode (\NFR{3}), while gateway mode demonstrates the 
-system-level masking effect expected under~\NFR{4}.
+system-level masking effect expected under~\NFR{4}. Specifically, 
+despite the clear architectural separation between implementations in 
+direct mode ($p<0.0001$), the introduction of Transport and Queuing 
+latencies causes them to become statistically indistinguishable ($p>0.05$) 
+at the end-to-end level.
 
 \section{Threats to Validity}
 \label{sec:threats_to_validity}
@@ -1028,7 +1091,7 @@ to bound the validity of these results.
         CPUs, the exact gaps may vary on server-grade Intel or AMD hardware. 
 
     \item \textbf{Synthetic Workloads.}
-        The scenarios use randomized order flows that do not perfectly capture 
+        The scenarios use randomised order flows that do not perfectly capture 
         the correlated bursts and strategic activity of a live market. 
         In a real-world exchange, clusters of activity at specific price levels 
         might stress the data structures in ways not captured by a uniform 
@@ -1051,7 +1114,7 @@ to bound the validity of these results.
 
     \item \textbf{Statistical Sample Size.}
         We reran each configuration multiple times (typically $n=30$ in direct
-        mode and $n=20$ in gateway mode). This supports confidence intervals for
+        mode and $n=20$ in gateway mode). This supports bootstrap confidence intervals for
         the main hypothesis checks. The limitation here is that we did not
         statistically test every implementation/scenario combination, so small
         gaps between middle-performing books should be

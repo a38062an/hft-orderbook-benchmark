@@ -1,0 +1,5 @@
+To get an accurate word count for the dissertation, run the following command from the 'dissertation/' directory:
+
+/usr/local/texlive/2025basic/bin/universal-darwin/texcount -total -inc report.tex
+
+Note: This path is specific to the TeX Live 2025 installation detected on this system.

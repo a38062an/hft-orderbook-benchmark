@@ -3,7 +3,7 @@
 
 \section{High-Frequency Trading and the Limit Order Book}
 
-High-Frequency Trading (HFT) is a specialized form of algorithmic trading that 
+High-Frequency Trading (HFT) is a specialised form of algorithmic trading that 
 executes orders at millisecond or microsecond timescales. 
 HFT strategies are characterised by high order-to-trade ratios, exceedingly 
 short holding periods, and a reliance on co-located servers running directly 
@@ -20,8 +20,7 @@ they are traded against by faster participants), and statistical arbitrage
 (exploiting fleeting price discrepancies across multiple exchange venues).
 As \citet{avellaneda2008hftlob} formalise, these strategies depend directly on 
 how quickly the limit order book can be updated and acted upon. 
-This is because even small delays can erode spread capture and increase 
-adverse-selection risk. 
+Even small delays erode spread capture and increase adverse-selection risk. 
 
 A core technological component of this ecosystem is the Limit Order Book (LOB), 
 illustrated in Figure~\ref{fig:lob_diagram}. 
@@ -37,15 +36,20 @@ The numerical difference between these two values is known as the spread
 acts as a primary indicator of market liquidity and volatility. 
 The midpoint between the best bid and best ask provides a theoretical ``fair value'' 
 for the asset at any given microsecond. 
-Strategic order submission and cancellation behaviour that drives spread and 
-depth evolution is formalised by \citet{rosu2009dynamiclob}.
+Complementing the bid-ask spread is \hyperref[app:glossary]{\textit{market depth}}, 
+which represents the cumulative volume of limit orders available at each 
+price level. A deep book provides higher liquidity, as it can absorb large 
+market orders with minimal price impact. The strategic order submission and 
+cancellation behaviour that drives spread and depth evolution is 
+formalised by \citet{rosu2009dynamiclob}.
 
 \input{figures/lob_diagram.tex}
 \vspace{1em}
 
 While the official limit order book is maintained by the exchange matching engine, 
 trading firms are responsible for reconstructing their own internal "shadow" books. 
-Exchanges broadcast market events via raw binary protocols like ITCH or FIX, and 
+Exchanges broadcast market events via raw binary protocols like 
+ITCH~\citep{nasdaq_itch} or FIX~\citep{fix42_spec}, and 
 quant firms must rapidly parse these feeds to rebuild the current book state in 
 their own local memory. 
 The performance of an HFT algorithm depends entirely on how quickly this internal 
@@ -56,14 +60,14 @@ paramount.
 \section{Hardware Architecture}
 
 To achieve true ultra-low latency, trading systems must be designed to cater 
-directly to the physical realities of the underlying microprocessor. 
-This approach is widely known as Mechanical Sympathy~\citep{fowler2011lmax}. 
-The core philosophy dictates that understanding the hardware architecture of a 
-machine enables software to operate in harmony with it, unlocking maximum 
-potential throughput. 
-Rather than treating the CPU as an abstract resource, HFT software treats hardware 
-features - such as cache hierarchies and processor pipelines - as first-class 
-design constraints.
+directly to the physical realities of the underlying microprocessor. This approach is widely 
+known as Mechanical Sympathy~\citep{thompson2011disruptor}. The core philosophy, 
+originally formulated by Martin Thompson, dictates that understanding 
+the hardware architecture of a machine enables software to operate in 
+harmony with it, unlocking maximum potential throughput. Rather than 
+treating the CPU as an abstract resource, HFT software treats hardware 
+features - such as cache hierarchies and processor pipelines - as 
+first-class design constraints.
 \subsection{Cache Hierarchy and Memory Access}
 
 The cache is the primary hardware component to optimise for when 
@@ -72,20 +76,19 @@ It relies on the concepts of temporal and spatial locality to reduce memory oper
 Temporal locality dictates that recently accessed memory locations are highly 
 likely to be accessed again in the near future. 
 Spatial locality assumes that memory locations physically adjacent to a recently 
-accessed address will also be needed soon. 
-This behaviour closely aligns with the Pareto principle, where 80\% of memory 
-accesses are typically concentrated within just 20\% of an application's data. 
+accessed address will also be needed soon. This behaviour aligns with a 
+well-known heuristic in systems design, which holds that approximately 
+80\% of memory accesses concentrate within just 20\% of a program's 
+working set~\citep{patterson2013cod}. 
 
 To capitalise on this, the memory subsystem is organised into a rigid hierarchical 
 structure, as visualised in Figure~\ref{fig:cache_hierarchy}. 
-The \hyperref[app:glossary]{L1 cache} is the smallest storage layer but resides physically closest to the 
-processor core, offering extremely fast access times of roughly 1 - 2 nanoseconds. 
-Subsequent caches (L2 and L3) are progressively larger but sit further away, 
-incurring proportionately longer fetch times. 
+The \hyperref[app:glossary]{L1 cache} is the smallest and fastest layer (1-2~ns).
+ Subsequent layers (L2, L3) are progressively larger and slower. 
 At the bottom of this hierarchy lies the main system memory (RAM). 
 Fetching data from main memory is significantly slower relative to the cache, 
 routinely taking over 100 nanoseconds and stalling the CPU pipeline entirely
-~\citep{patterson2013computer}.
+~\citep{patterson2013cod}.
 
 When the CPU fetches data from memory, it does not retrieve individual bytes; 
 instead, it loads contiguous blocks known as \hyperref[app:glossary]{cache lines} (typically 64 bytes). 
@@ -101,7 +104,7 @@ slow main memory fetches.
 Modern CPUs process computation through a specific sequence of stages known as 
 the instruction pipeline, conceptualised in Figure~\ref{fig:pipeline_flush}. 
 While architectures vary, a classic pipeline consists of four fundamental stages: 
-Fetch, Decode, Execute, and Write-back~\citep{patterson2013computer}. 
+Fetch, Decode, Execute, and Write-back~\citep{patterson2013cod}. 
 When the CPU encounters a conditional branch (an \texttt{if}-\texttt{else} statement) 
 during the Fetch phase, it does not actually know which path to take until the 
 Execute phase resolves the condition. 
@@ -110,16 +113,13 @@ or guess the outcome.
 Waiting would stall the pipeline completely, wasting upward of 15 to 20 clock 
 cycles while the CPU sits idle doing nothing. 
 
-To avoid this massive waste of computational time, CPUs rely on a mechanism 
-called a branch predictor. 
-Instead of waiting, the branch predictor guesses which path the program will take 
-and immediately begins speculatively fetching and decoding those instructions. 
-If the guess is correct, execution continues seamlessly with zero wasted cycles. 
-However, if the predictor guesses incorrectly, the CPU must flush all the 
-speculative, half-finished work from the pipeline and restart fetching from the 
-correct address. 
-This pipeline flush incurs a severe penalty, typically costing modern architectures 
-like the AMD Zen 4 between 15 and 20 cycles of completely lost time~\citep{fog_microarchitecture}. 
+To avoid these stalls, CPUs use branch predictors to speculatively execute 
+likely paths. 
+If the guess is correct, execution continues seamlessly. 
+However, if the predictor guesses incorrectly, the CPU must flush the 
+pipeline and restart from the correct address. 
+True penalty typically costs modern architectures like the AMD Zen 4 between 
+15 and 20 cycles~\citep{fog_microarchitecture}. 
 
 Modern predictors, such as the TAGE (TAgged GEometric) or perceptron-based 
 predictors built into current AMD and Intel chips, are incredibly sophisticated 
@@ -179,7 +179,7 @@ worst-case complexity (due to shifting elements to maintain chronological order)
 this metric is theoretically inferior to a tree's $\mathcal{O}(\log N)$. 
 However, because arrays are strictly contiguous in memory, traversing them allows 
 the CPU's hardware prefetcher to eagerly load subsequent elements into the L1 
-cache before they are even requested~\citep{patterson2013computer}. 
+cache before they are even requested~\citep{patterson2013cod}. 
 For the relatively small, localised working sets typical of an active limit order 
 book, the sheer speed of contiguous localised memory scans vastly outweighs the 
 algorithmic overhead. 
@@ -279,7 +279,7 @@ relinquishing the CPU.
 
 However, writing to an atomic variable requires a core to obtain exclusive 
 ownership of the memory location. This triggers the hardware's 
-\hyperref[app:glossary]{\textit{MESI} protocol}~\citep{patterson2013computer}, which forces all other 
+\hyperref[app:glossary]{\textit{MESI} protocol}~\citep{patterson2013cod}, which forces all other 
 cores to invalidate their local cache copies. 
 Communication across the CPU bus to synchronise these states is 
 orders of magnitude slower than a local L1 cache access.
@@ -350,7 +350,7 @@ When a host receives a FIX message encapsulated within
 a TCP/IP packet, it must traverse the standard Linux kernel networking 
 stack. This journey, visualised in Figure~\ref{fig:kernel_network_pipeline}, 
 is a rigid, multi-stage pipeline designed for throughput and safety rather 
-than deterministic latency.
+than deterministic latency~\citep{benvenuti_networking, cai2021overhead}.
 
 \input{figures/kernel_pipeline.tex}
 
@@ -361,7 +361,7 @@ CPU to pause its current task and branch to the kernel's interrupt
 handler. 
 The kernel then switches to a Software Interrupt (SoftIRQ) 
 context via the NAPI (New API) polling mechanism to drain the ring 
-buffer, as detailed by~\citet{love_kernel}. 
+buffer, as detailed by~\citet{love_kernel, benvenuti_networking}. 
 The kernel allocates an \texttt{sk\_buff} data structure 
 to wrap the packet, performs housekeeping and routing (IP layer), 
 and eventually appends the data to the socket's receive queue.
@@ -370,7 +370,7 @@ The User Application must issue a system call, such as
 \texttt{recvfrom}, to retrieve the data. This triggers an 
 expensive \textit{context switch} from User Space to Kernel Space, 
 where the kernel copies the data from its internal buffer to the 
-application memory. 
+application memory~\citep{benvenuti_networking, cai2021overhead}. 
 Because the kernel is responsible for scheduling thousands of unrelated 
 tasks across the CPU, a packet may sit in the socket queue for 
 unpredictable durations if the kernel is busy with book-keeping or 
@@ -407,6 +407,7 @@ order-book data structures which would otherwise be masked by
 kernel jitter.
 
 \section{Related Work}
+\label{sec:related_work}
 Prior literature can be grouped into market-microstructure theory,
 systems-design practice, and performance-engineering methodology, each with
 different strengths and blind spots.
@@ -424,7 +425,7 @@ small latency advantages can have economically significant effects.
 
 Systems-oriented sources describe low-latency architectural patterns but are
 less controlled from an academic benchmarking perspective. The LMAX work
-\citep{fowler2011lmax,thompson2011disruptor} and more recent systematic
+\citep{thompson2011disruptor} and more recent systematic
 evaluations by \citet{bilokon2023cpp} demonstrate the practical value
 of single-writer flows, cache-aware patterns, and the "boring" (deterministic) 
 latency profiles required for HFT. Library-level

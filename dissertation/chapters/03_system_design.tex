@@ -11,11 +11,11 @@ lock-free queue for thread hand-off, and finally dispatches them to the
 matching engine. 
 
 While every component in this pipeline contributes to total system latency, 
-the order book is typically the primary computational bottleneck in a 
-matching engine~\citep{gould2013lob}. As the stateful core of the exchange, 
+the order book is typically the primary stateful core of a 
+matching engine~\citep{bilokon2023cpp}. As the heart of the exchange, 
 the order book must maintain price-time priority while processing 
 high-frequency updates, making the choice of data structure the most 
-significant factor for engine scalability~\citep{aldridge2013hft}. For this 
+significant factor for engine scalability~\citep{harrisequity}. For this 
 reason, this report focuses on exploring the performance trade-offs of 
 varied order book layouts. 
 
@@ -224,3 +224,14 @@ This elimination of context-switching jitter and cache-migration overhead is
 vital for mitigating the \textit{Observer Effect}. 
 It ensures that our measurements represent 'bare-metal' performance as closely 
 as possible within a Linux environment.
+
+\section{Implementation Parameters}
+\label{sec:implementation_parameters}
+To ensure reproducibility (\NFR{5}), we specify the following design 
+parameters used across all benchmarked variants: 
+
+\begin{itemize}
+    \item \textbf{Array Layout}: 100 levels per side (1.6~KB total). This size is intentionally chosen to fit entirely within the 32~KB L1 Data Cache of the test hardware.
+    \item \textbf{Pool Capacity}: 1 million pre-allocated \texttt{Order} structures (approx. 44~MB). This volume intentionally exceeds the 32~MB L3 cache to test the performance of slab recycling after cache exhaustion.
+    \item \textbf{Hybrid Hot-Path}: 20-level threshold for vector storage. This represents approximately 80\% of typical market activity according to our scenario generation profiles.
+\end{itemize}

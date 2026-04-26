@@ -16,8 +16,8 @@
 @misc{moodycamel_concurrentqueue,
   author       = {Desrochers, Cameron},
   year         = {2013},
-  title        = {{Concurrentqueue}},
-  note         = {GitHub repository. Available at: \url{https://github.com/cameron314/concurrentqueue} (Accessed: 7 April 2026)}
+  title        = {{Concurrentqueue (v1.0.0-beta)}},
+  note         = {GitHub repository (commit: 524458d). Available at: \url{https://github.com/cameron314/concurrentqueue} (Accessed: 7 April 2026)}
 }
 
 @misc{fix42_spec,
@@ -25,6 +25,23 @@
   year         = {2001},
   title        = {{Financial information exchange (FIX) protocol: Version 4.2}},
   note         = {Available at: \url{https://www.onixs.biz/fix-dictionary/4.2/index.html} (Accessed: 7 April 2026)}
+}
+
+@misc{nasdaq_itch,
+  author       = {{Nasdaq}},
+  year         = {2024},
+  title        = {{Nasdaq TotalView-ITCH 5.0 Specification}},
+  note         = {Available at: \url{https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/NQTVITCHspecification.pdf} (Accessed: 24 April 2026)}
+}
+
+
+@book{ostep,
+  author    = {Arpaci-Dusseau, Remzi H. and Arpaci-Dusseau, Andrea C.},
+  title     = {{Operating Systems: Three Easy Pieces}},
+  publisher = {Arpaci-Dusseau Books},
+  year      = {2018},
+  edition   = {1.00},
+  note      = {Available at: \url{https://pages.cs.wisc.edu/~remzi/OSTEP/}}
 }
 
 @misc{fowler_contract_testing,
@@ -39,6 +56,16 @@
   year         = {2024},
   title        = {{Googletest: Testing reference and parameterized tests}},
   note         = {Available at: \url{https://google.github.io/googletest/reference/testing.html} (Accessed: 7 April 2026)}
+}
+
+@article{coplien1995crtp,
+  author       = {Coplien, James O.},
+  year         = {1995},
+  title        = {{Curiously Recurring Template Patterns}},
+  journal      = {C++ Report},
+  volume       = {7},
+  number       = {2},
+  pages        = {24--27}
 }
 
 @article{liskov1987,
@@ -102,20 +129,6 @@
   doi          = {10.1080/14697688.2013.803148}
 }
 
-@misc{fowler2011lmax,
-  author       = {Fowler, Martin},
-  year         = {2011},
-  title        = {{The LMAX Architecture}},
-  note         = {Available at: \url{https://martinfowler.com/articles/lmax.html} (Accessed: 7 April 2026)}
-}
-
-@manual{fog_microarchitecture,
-  author       = {Fog, Agner},
-  year         = {2025},
-  title        = {{The microarchitecture of Intel, AMD and VIA CPUs: An optimization guide}},
-  organization = {agner.org},
-  note         = {Available at: \url{https://www.agner.org/optimize/microarchitecture.pdf} (Accessed: 7 April 2026)}
-}
 
 @misc{redhat2012_openonload,
   author       = {{Red Hat, Inc.}},
@@ -197,11 +210,11 @@
   doi       = {10.1093/qje/qjab032}
 }
 
-@book{patterson2013computer,
+@book{patterson2013cod,
   title        = {{Computer Organization and Design: The Hardware/Software Interface}},
   author       = {Patterson, David A. and Hennessy, John L.},
   year         = {2013},
-  publisher    = {Newnes}
+  publisher    = {Morgan Kaufmann}
 }
 
 @article{dean2013tail,
@@ -239,6 +252,21 @@
   publisher = {Addison-Wesley Professional}
 }
 
+@book{benvenuti_networking,
+  title     = {Understanding Linux Network Internals},
+  author    = {Benvenuti, Christian},
+  year      = {2006},
+  publisher = {O'Reilly Media, Inc.}
+}
+
+@inproceedings{cai2021overhead,
+  title     = {Understanding host network stack overheads},
+  author    = {Cai, Qizhen and Karsten, Martin},
+  booktitle = {Proceedings of the 2021 ACM SIGCOMM 2021 Conference},
+  pages     = {65--77},
+  year      = {2021}
+}
+
 @book{gregg2013systems,
   title     = {{Systems Performance: Enterprise and the Cloud}},
   author    = {Gregg, Brendan},
@@ -253,7 +281,7 @@
   institution = {LMAX},
   year        = {2011},
   month       = {May},
-  note        = {Available at: \url{https://github.com/LMAX-Exchange/disruptor}}
+  note        = {Available at: \url{https://lmax-exchange.github.io/disruptor/files/Disruptor-White-Paper.pdf}}
 }
 
 @article{bilokon2023cpp,
@@ -351,4 +379,55 @@
   pages     = {9592},
   year      = {2023},
   publisher = {MDPI}
+}
+
+@book{efron1994introduction,
+  title     = {An Introduction to the Bootstrap},
+  author    = {Efron, Bradley and Tibshirani, Robert J},
+  year      = {1994},
+  publisher = {CRC press}
+}
+
+@article{pitman1937significance,
+  title     = {Significance tests which may be applied to samples from any populations},
+  author    = {Pitman, Edwin JG},
+  journal   = {Supplement to the Journal of the Royal Statistical Society},
+  volume    = {4},
+  number    = {1},
+  pages     = {119--130},
+  year      = {1937},
+  publisher = {Royal Statistical Society}
+}
+
+
+@inproceedings{clark2016zen,
+  author    = {Clark, Michael},
+  title     = {{Zen: A New x86 Core Architecture}},
+  booktitle = {Proceedings of the 2016 IEEE/ACM Symposium on High Performance Chips (Hot Chips 28)},
+  year      = {2016},
+  publisher = {IEEE/ACM}
+}
+
+@article{holm1979simple,
+  title={A simple sequentially rejective multiple test procedure},
+  author={Holm, Sture},
+  journal={Scandinavian Journal of Statistics},
+  volume={6},
+  number={2},
+  pages={65--70},
+  year={1979},
+  publisher={JSTOR}
+}
+@book{ohara1995market,
+  title={Market Microstructure Theory},
+  author={O'Hara, Maureen},
+  year={1995},
+  publisher={Blackwell Publishers}
+}
+
+@manual{fog_microarchitecture,
+  title        = {The microarchitecture of Intel, AMD, and VIA CPUs: An optimization guide for assembly programmers and compiler makers},
+  author       = {Fog, Agner},
+  year         = {2023},
+  note         = {Available at: \url{https://www.agner.org/optimize/microarchitecture.pdf}}
 }

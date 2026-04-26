@@ -8,20 +8,23 @@ In this environment, the \hyperref[app:glossary]{order book} serves as the funda
 state-machine on the critical path. 
 The design of this component is a system-level problem where cache-coherence, 
 branch-prediction, and network-stack overhead intersect to define 
-performance~\citep{gould2013lob,thompson2011disruptor}.
+performance~\citep{bilokon2023cpp,thompson2011disruptor}. As discussed further 
+in Section~\ref{sec:related_work}, this performance gap is fundamentally 
+tied to the market microstructure mechanisms described by \citet{ohara1995market} 
+and the competitive 'arms race' context evaluated by \citet{aquilina2022armsrace}.
 
 Given this dependence on low-latency software, understanding the performance 
-implications of different order-book designs is important for both researchers 
+implications of different order book designs is important for both researchers 
 and practitioners. 
-This dissertation evaluates and compares order-book data 
+This dissertation evaluates and compares order book data 
 structures in a realistic benchmarking environment. 
 Detailed technical definitions are provided in Chapter~\ref{chap:background}; 
 this chapter focuses on the research problem, objectives, and scope of the study.
 
 \section{Problem Statement and Research Gap}
-Although there has been significant work on order-book data structures, much of
+Although there has been significant work on order book data structures, much of
 industry practice remains opaque because implementation details are commercially
-sensitive. Any advantage gained from an optimised order-book design can be worth 
+sensitive. Any advantage gained from an optimised order book design can be worth 
 substantial financial value, so firms rarely disclose architecture decisions in 
 detail. 
 This creates a role for academic benchmarking: providing a 
@@ -41,9 +44,9 @@ trading environments.
 The specific objectives are as follows:
 
 \begin{itemize}
-  \item Define a modular benchmarking framework with interchangeable order-book
+  \item Define a modular benchmarking framework with interchangeable order book
   implementations under a common interface.
-  \item Implement and validate five order-book variants (map, array, vector,
+  \item Implement and validate five order book variants (map, array, vector,
   pool, and hybrid) with semantic parity across shared test scenarios.
   \item Evaluate performance in direct mode and gateway mode to separate
   algorithmic behaviour from end-to-end system overhead.
@@ -65,7 +68,7 @@ allocator strategy, and systems overhead:
 
 \begin{itemize}
   \item \textbf{\ref{hyp:h1} (Data Structure and Cache Locality):} index-based
-  order-book layouts are expected to outperform pointer-heavy alternatives in
+  order book layouts are expected to outperform pointer-heavy alternatives in
   isolated operation.
   \item \textbf{\ref{hyp:h2} (Memory Allocation Limits):} memory pooling is
   expected to reduce selected allocation costs but not remove the fundamental
@@ -80,8 +83,7 @@ consistently outperform pointer-heavy designs in direct mode across the core
 scenarios; \ref{hyp:h2} is treated as supported when pooling improves selected
 allocation-heavy cases without eliminating structural penalties across mixed
 workloads; and \ref{hyp:h3} is treated as supported when gateway decomposition
-shows network and queue costs dominating engine cost, with compressed
-cross-implementation differences.
+shows network and queue costs dominating engine cost.
 
 These hypotheses and acceptance criteria are defined formally in
 Chapter~\ref{chap:testing_evaluation}.
@@ -90,7 +92,7 @@ Chapter~\ref{chap:testing_evaluation}.
 \section{Scope and Boundaries}
 This dissertation focuses on software-path benchmarking within a controlled host
 environment, including direct and gateway execution modes, multiple workload
-profiles, and comparative analysis across five order-book implementations. The
+profiles, and comparative analysis across five order book implementations. The
 scope includes functional validation, throughput and latency measurement, and
 component-level decomposition of gateway costs. The scope does not include
 full physical network-path modelling (for example switch traversal and NIC
@@ -99,25 +101,21 @@ as environment-bounded rather than universally transferable.
 
 
 \section{Contributions Overview}
-The dissertation makes four contributions. First, it presents a modular,
-extensible C++20 exchange framework with interchangeable order-book
-implementations and a TCP gateway path for end-to-end benchmarking. Second, it
-provides a reproducible benchmarking suite that separates direct-mode and
-gateway-mode behaviour while decomposing latency and throughput across pipeline
-components. Third, it reports empirical evidence on the trade-offs between
-cache-friendly indexing and pointer-based alternatives, including the bounded
-benefit profile of memory pooling. Fourth, it demonstrates a systems-level
-result: in gateway operation, network and queue overheads can dominate total
-latency and mask differences that are visible in isolated mode.
+The dissertation makes four contributions. First, it presents a modular C++20 
+exchange framework with five baseline configurations, designed to allow future 
+developers to easily plug in custom data structures. Second, it provides a 
+reproducible benchmarking suite that separates direct-mode and gateway-mode 
+behaviour while decomposing latency and throughput across pipeline components. 
+Third, it reports empirical evidence on the trade-offs between cache-friendly 
+indexing and pointer-based alternatives. Fourth, it demonstrates a 
+systems-level result: in gateway operation, network and queue overheads can 
+dominate total latency and mask differences visible in isolated mode.
 
 
 \section{Dissertation Structure}
-Chapter~\ref{chap:background} reviews the technical background required for the
-study, including market microstructure and hardware-aware performance
-considerations. Chapter~\ref{chap:system_design} presents the architectural
-design, requirements framework, and benchmarking philosophy. Chapter~\ref{chap:implementation}
-details implementation choices for the exchange pipeline and order-book
-variants. Chapter~\ref{chap:testing_evaluation} reports functional validation
-and performance results against the research hypotheses. Finally,
-Chapter~\ref{chap:conclusions} summarises findings, limitations, and future
-work.
+Subsequent chapters cover: technical background and market microstructure 
+(\ref{chap:background}); system design and requirements 
+(\ref{chap:system_design}); implementation of the exchange pipeline 
+(\ref{chap:implementation}); and performance evaluation 
+(\ref{chap:testing_evaluation}). Chapter~\ref{chap:conclusions} summarises 
+findings, limitations, and future work.

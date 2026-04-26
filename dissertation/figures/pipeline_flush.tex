@@ -33,19 +33,19 @@
     \node[w] at (5, 2) {W};
 
     % Annotation for mispredict
-    \draw[->, thick, red] (4, 2.7) -- (4, 2.45);
-    \node[color=red!80!black, font=\sffamily\bfseries\scriptsize, align=center] at (4, 3.0) {Mispredict\\Evaluated!};
+    \draw[->, thick, red] (4, 3.2) -- (4, 2.45);
+    \node[color=red!80!black, font=\sffamily\bfseries\scriptsize, align=center, fill=white, inner sep=2pt] at (4, 2.9) {Mispredict Evaluated!};
 
     % Row 3: Speculative instruction 1
     \node[label, color=gray] at (0.3, 3.7) {$I_3$ (Speculative)};
     \node[f] at (3, 3.7) {F};
     \node[d] at (4, 3.7) {D};
-    \node[flush, minimum width=4.8cm] at (6.5, 3.7) {FLUSHED (Wasted CPU Cycles)};
+    \node[flush, anchor=west] at (4.6, 3.7) {FLUSHED (Wasted CPU Cycles)};
 
     % Row 4: Speculative instruction 2
     \node[label, color=gray] at (0.3, 4.7) {$I_4$ (Speculative)};
     \node[f] at (4, 4.7) {F};
-    \node[flush, minimum width=3.5cm] at (6, 4.7) {FLUSHED};
+    \node[flush, anchor=west] at (4.6, 4.7) {FLUSHED};
 
     % Row 5: Correct recovery instruction
     \node[label, font=\sffamily\bfseries] at (0.3, 5.7) {$I_3'$ (Correct target)};
